@@ -35,7 +35,7 @@ pub fn derive_packed(input: TokenStream) -> TokenStream {
 
     // Generate the trait implementation
     let expanded = quote! {
-        impl crate::_Packed_ for #name {}
+        impl crate::Packed for #name {}
     };
 
     // Convert the generated tokens back into a TokenStream

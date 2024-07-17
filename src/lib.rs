@@ -8,6 +8,8 @@
 #![feature(deref_pure_trait)]
 #![feature(unsize)]
 
+extern crate packed;
+
 pub mod boxed;
 pub mod disk;
 pub mod fs;
@@ -20,9 +22,9 @@ pub mod tty;
 pub mod serial;
 pub mod sync;
 
-pub trait _Packed_: Sized {}
+pub trait Packed: Sized {}
 
-pub trait FromBytes: _Packed_ {
+pub trait FromBytes: Packed {
     type Output;
     fn from_bytes(bytes: &[u8]) -> Self::Output;
 }
