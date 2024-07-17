@@ -13,6 +13,7 @@ extern crate packed;
 pub mod boxed;
 pub mod disk;
 pub mod fs;
+pub mod gdt;
 pub mod heap;
 pub mod io;
 pub mod path;
