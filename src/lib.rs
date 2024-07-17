@@ -3,7 +3,12 @@
 #![feature(naked_functions)]
 #![allow(internal_features)]
 #![feature(ptr_internals)]
+#![feature(dispatch_from_dyn)]
+#![feature(coerce_unsized)]
+#![feature(deref_pure_trait)]
+#![feature(unsize)]
 
+pub mod boxed;
 pub mod heap;
 pub mod io;
 pub mod start;
