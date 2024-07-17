@@ -5,3 +5,17 @@ pub mod lock;
 
 pub use global::Global;
 pub use lock::Lock;
+
+#[macro_export]
+macro_rules! spinwhile {
+    ($cond:expr) => {
+        while $cond {}
+    };
+}
+
+#[macro_export]
+macro_rules! spinuntil {
+    ($cond:expr) => {
+        while !($cond) {}
+    };
+}

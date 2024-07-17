@@ -9,6 +9,7 @@
 #![feature(unsize)]
 
 pub mod boxed;
+pub mod disk;
 pub mod fs;
 pub mod heap;
 pub mod io;
