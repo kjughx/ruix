@@ -3,6 +3,9 @@ name = "ruix"
 version = "0.1.0"
 edition = "2021"
 
+[dependencies]
+packed = {path = "packed"}
+
 # the profile used for `cargo build`
 [profile.dev]
 panic = "abort" # disable stack unwinding on panic
@@ -12,4 +15,3 @@ opt-level = 1
 [profile.release]
 panic = "abort" # disable stack unwinding on panic
 opt-level = 1
-

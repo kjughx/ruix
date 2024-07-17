@@ -18,3 +18,10 @@ pub mod tty;
 #[macro_use]
 pub mod serial;
 pub mod sync;
+
+pub trait _Packed_: Sized {}
+
+pub trait FromBytes: _Packed_ {
+    type Output;
+    fn from_bytes(bytes: &[u8]) -> Self::Output;
+}
