@@ -1,18 +1,18 @@
-use core::cell::LazyCell;
-use crate::types::Mutex;
+use crate::{lock, sync::global::Global};
 
 const VGA_WIDTH: isize = 80;
 const VGA_HEIGHT: isize = 25;
 
-static mut TERMINAL: LazyCell<Mutex<TypeWriter>> = LazyCell::new(|| {
-    Mutex::new(TypeWriter {
+static mut TERMINAL: Global<TypeWriter> = Global::new(
+    || TypeWriter {
         base: 0xB8000,
         width: VGA_WIDTH,
         height: VGA_HEIGHT,
         ix: 0,
         iy: 0,
-    })
-});
+    },
+    "TERMINAL",
+);
 
 struct TypeWriter {
     base: u32,
@@ -88,9 +88,11 @@ impl TypeWriter {
 }
 
 pub fn init_screen() {
-    unsafe { TERMINAL.lock().init() };
+    let mut terminal = unsafe { lock!(TERMINAL) };
+    terminal.init();
 }
 
 pub fn print(msg: &str) {
-    unsafe { TERMINAL.lock().write(msg) };
+    let mut terminal = unsafe { lock!(TERMINAL) };
+    terminal.write(msg)
 }

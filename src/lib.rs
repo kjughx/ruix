@@ -5,7 +5,7 @@
 
 pub mod start;
 pub mod tty;
-pub mod types;
 pub mod io;
 #[macro_use]
 pub mod serial;
+pub mod sync;

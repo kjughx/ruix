@@ -1,24 +1,7 @@
 use core::cell::UnsafeCell;
 use core::ops::{Deref, DerefMut};
-use core::sync::atomic::AtomicBool;
-use core::sync::atomic::Ordering;
 
-pub struct Lock(AtomicBool);
-
-impl Lock {
-    fn new() -> Self {
-        Self(AtomicBool::new(false))
-    }
-
-    fn lock(&self) {
-        while self.0.load(Ordering::Acquire) {}
-        self.0.store(true, Ordering::Release);
-    }
-    fn unlock(&self) {
-        assert!(self.0.load(Ordering::Acquire));
-        self.0.store(false, Ordering::Release);
-    }
-}
+use crate::sync::lock::Lock;
 
 pub struct Mutex<T> {
     data: UnsafeCell<T>,
@@ -29,7 +12,7 @@ impl<T> Mutex<T> {
     pub fn new(data: T) -> Self {
         Self {
             data: UnsafeCell::new(data),
-            lock: Lock::new(),
+            lock: Lock::new(None),
         }
     }
 
