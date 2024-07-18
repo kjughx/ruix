@@ -1,4 +1,5 @@
 use core::arch::asm;
+use crate::{__trace, traceln};
 
 #[no_mangle]
 pub static DATA_SEG: u32 = 0x10;
@@ -36,8 +37,12 @@ extern "C" fn _start() -> ! {
 
 #[inline(never)]
 #[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
+fn panic(info: &core::panic::PanicInfo) -> ! {
+    if let Some(loc) = info.location() {
+        __trace!("[{}:{}] panic - {}", loc.file(), loc.line(), info.message());
+    } else {
+        __trace!("Kernel panic somwhere!");
+    }
+
     unsafe { asm!("hlt", options(noreturn)) }
 }
-
-
