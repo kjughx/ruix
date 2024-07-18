@@ -6,32 +6,25 @@ use crate::{sync::Global, Error};
 pub mod pagedirectory;
 pub mod pagetable;
 
+use global::global;
 use pagedirectory::PageDirectory;
 
-static mut KERNEL_DIRECTORY: Global<PageDirectory> = Global::new(
-    || PageDirectory::new(PAGE_IS_WRITABLE | PAGE_IS_PRESENT | PAGE_ACCESS_ALL),
-    "KERNEL_PAGE_DIRECTORY",
-);
+global! {
+    KernelPage,
+    PageDirectory,
+    PageDirectory::new(PAGE_IS_WRITABLE | PAGE_IS_PRESENT | PAGE_ACCESS_ALL),
+    "KERNEL_PAGE_DIRECTORY"
 
-pub struct KernelPage;
+}
+
 impl KernelPage {
-    #[allow(static_mut_refs)]
-    pub fn get() -> &'static Global<PageDirectory> {
-        unsafe { &KERNEL_DIRECTORY }
-    }
-
-    #[allow(static_mut_refs)]
-    pub fn get_mut() -> &'static mut Global<PageDirectory> {
-        unsafe { &mut KERNEL_DIRECTORY }
-    }
-
     pub fn switch() {
         let directory = Self::get();
-        directory.with_rlock(|dir| Paging::switch(dir))
+        directory.with_rlock(Paging::switch)
     }
 
     pub fn map(vaddr: Addr, paddr: Addr, flags: Flags) -> Result<(), Error> {
-        let mut directory = Self::get_mut();
+        let directory = Self::get_mut();
         directory.with_wlock(|dir| dir.map(vaddr, paddr, flags))
     }
 }

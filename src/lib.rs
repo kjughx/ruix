@@ -7,7 +7,8 @@
 #![feature(coerce_unsized)]
 #![feature(deref_pure_trait)]
 #![feature(unsize)]
-
+#![allow(dead_code)]
+extern crate global;
 extern crate packed;
 
 pub mod boxed;

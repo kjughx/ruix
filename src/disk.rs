@@ -3,6 +3,7 @@ use crate::FromBytes;
 use crate::{
     boxed::{Dyn, Vec},
     fs::FileSystem,
+    global::global,
     io::{insb, insw, outb},
     spinwhile,
     sync::Global,
@@ -40,14 +41,12 @@ impl Disk {
         }
     }
 
-    #[allow(static_mut_refs)]
     pub fn get(_id: u32) -> &'static Global<Disk> {
-        unsafe { &DISK0 }
+        Disk0::get()
     }
 
-    #[allow(static_mut_refs)]
     pub fn get_mut(_id: u32) -> &'static mut Global<Disk> {
-        unsafe { &mut DISK0 }
+        Disk0::get_mut()
     }
 
     pub fn register_filesystem(&mut self, fs: Dyn<dyn FileSystem>) {
@@ -63,7 +62,11 @@ impl Disk {
     }
 }
 
-static mut DISK0: Global<Disk> = Global::new(|| Disk::new(DiskType::Real, SECTOR_SIZE, 0), "DISK0");
+global! {
+    Disk0,
+    Disk,
+    Disk::new(DiskType::Real, SECTOR_SIZE, 0), "DISK0"
+}
 
 pub trait Stream {
     fn seek(&mut self, pos: usize);

@@ -1,5 +1,7 @@
 use core::ptr::{self, Unique};
 
+use global::global;
+
 use crate::sync::global::Global;
 
 pub const HEAP_BLOCK_SIZE: usize = 4096;
@@ -20,11 +22,12 @@ const KERNEL_HEAP_SIZE: usize = 100 * 1024 * 1024; // 100MB
 const KERNEL_HEAP_START: usize = 0x01000000;
 const KERNEL_ENTRIES_START: usize = 0x00007E00;
 
-#[rustfmt::skip]
-static mut KERNEL_HEAP: Global<Heap> = Global::new(
-    || Heap::new(KERNEL_ENTRIES_START, KERNEL_HEAP_SIZE, KERNEL_HEAP_START),
-    "KERNEL_HEAP",
-);
+global! {
+    KernelHeap,
+    Heap,
+    Heap::new(KERNEL_ENTRIES_START, KERNEL_HEAP_SIZE, KERNEL_HEAP_START),
+    "KERNEL_HEAP"
+}
 
 pub struct Heap {
     entries: Unique<[u8]>,
@@ -158,13 +161,14 @@ impl Heap {
 }
 
 pub fn alloc<T>(size: usize) -> *mut T {
-    let mut heap = unsafe { &mut KERNEL_HEAP };
+    let mut heap = KernelHeap::get_mut();
+
 
     heap.with_wlock(|heap| -> *mut T { heap.alloc_blocks(Heap::align_block(size)).cast() })
 }
 
 pub fn realloc(old: Addr, size: usize) -> Addr {
-    let mut heap = unsafe { &mut KERNEL_HEAP };
+    let mut heap = KernelHeap::get_mut();
 
     heap.with_wlock(|heap| -> Addr {
         let count = Heap::align_block(size);
@@ -179,7 +183,7 @@ pub fn realloc(old: Addr, size: usize) -> Addr {
 }
 
 pub fn free<T: ?Sized>(ptr: *mut T) {
-    let mut heap = unsafe { &mut KERNEL_HEAP };
+    let mut heap = KernelHeap::get_mut();
 
     heap.with_wlock(|heap| {
         let start_block = heap.addr_to_block(ptr.cast());

@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 packed = {path = "packed"}
 interrupts = {path = "interrupts" }
+global = {path = "global"}
 
 # the profile used for `cargo build`
 [profile.dev]
