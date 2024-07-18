@@ -1,6 +1,11 @@
 use core::arch::asm;
 
-use crate::{cpu::InterruptFrame, io::outb, packed::{packed, Packed}, traceln};
+use crate::{
+    cpu::InterruptFrame,
+    io::outb,
+    packed::{packed, Packed},
+    traceln,
+};
 
 extern crate interrupts;
 
@@ -12,7 +17,7 @@ interrupts::interrupt_table!(128);
 #[no_mangle]
 fn interrupt_handler(i: u16, frame: *const InterruptFrame) {
     unsafe {
-        traceln!("Interrupted: {}: {:?}", i, *frame);
+        traceln!("Interrupted: {}: {}", i, *frame);
     };
     outb(0x20, 0x20);
 }
@@ -54,7 +59,8 @@ impl IDTDescriptor {
             offset_high: 0,
         }
     }
-    fn new(cb: *const u32) -> Self {
+
+    fn new(cb: unsafe extern "C" fn()) -> Self {
         let addr = cb as u32;
         Self {
             offset_low: (addr & 0xFFFF) as u16,
@@ -76,8 +82,7 @@ impl IDT {
     #[allow(clippy::needless_range_loop)]
     pub fn load() {
         for i in 0..MAX_INTERRUPTS {
-            let cb = INTERRUPT_POINTER_TABLE[i] as *const u32;
-            Self::_set(i, cb);
+            Self::set(i, INTERRUPT_POINTER_TABLE[i]);
         }
 
         unsafe {
@@ -95,11 +100,10 @@ impl IDT {
         }
     }
 
-    pub fn _set(i: usize, cb: *const u32) {
+    pub fn set(i: usize, cb: unsafe extern "C" fn()) {
+        if i >= MAX_INTERRUPTS {
+            return;
+        }
         unsafe { IDT_DESCRIPTORS[i] = IDTDescriptor::new(cb) };
-    }
-
-    pub fn set(i: usize, cb: fn(InterruptFrame)) {
-        Self::_set(i, cb as *const u32)
     }
 }

@@ -1,4 +1,4 @@
-use core::fmt::Debug;
+use core::fmt::Display;
 
 use crate::packed::{packed, Packed};
 
@@ -61,10 +61,33 @@ pub struct InterruptFrame {
     pub ss: u32,
 }
 
-impl Debug for InterruptFrame {
+impl Display for InterruptFrame {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let edi = self.edi;
+        let esi = self.esi;
+        let ebp = self.ebp;
+        let ebx = self.ebx;
+        let edx = self.edx;
+        let ecx = self.ecx;
+        let eax = self.eax;
         let ip = self.ip;
+        let cs = self.cs;
         let flags = self.flags;
-        write!(f, r#" ip: 0x{:x}, flags: 0b{:b}"#, ip, flags)
+        let sp = self.sp;
+        let ss = self.ss;
+        write!(
+            f,
+            r#"
+            edi: 0x{:08x}    esi: 0x{:08x}    ebp: 0x{:08x}
+            ebx: 0x{:08x}    edx: 0x{:08x}
+            ecx: 0x{:08x}    eax: 0x{:08x}
+
+            flags: 0b{:08b}
+            ip: 0x{:08x}     cs: 0x{:08x}
+            sp: 0x{:08x}
+            ss: 0x{:08x}
+        "#,
+            edi, esi, ebp, ebx, edx, ecx, eax, flags, ip, cs, sp, ss
+        )
     }
 }
