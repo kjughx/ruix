@@ -7,13 +7,13 @@ use ruix::{
     gdt::GDT,
     idt::IDT,
     paging::{KernelPage, Paging},
-    traceln,
-    tty::{init_screen, print},
+    println, traceln,
+    tty::Terminal,
 };
 
 #[no_mangle] // don't mangle the name of this function
 pub extern "C" fn kernel_main() -> ! {
-    init_screen();
+    Terminal::init();
 
     GDT::load();
 
@@ -22,13 +22,13 @@ pub extern "C" fn kernel_main() -> ! {
     // Resolve the connected disks
     match Vfs::resolve(Disk::get_mut(0)) {
         Ok(()) => (),
-        Err(_) => print("Could not resolve disk 0"),
+        Err(_) => println!("Could not resolve disk 0"),
     }
 
     KernelPage::switch();
     Paging::enable();
 
-    print("Hello, World!");
+    println!("Hello, World!");
     traceln!("Hello, World!");
     loop {
         unsafe { core::arch::asm!("hlt", options(noreturn)) };

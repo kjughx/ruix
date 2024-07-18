@@ -1,41 +1,41 @@
-use crate::sync::global::Global;
+use core::fmt::{self, Write};
 
-const VGA_WIDTH: isize = 80;
-const VGA_HEIGHT: isize = 25;
+#[macro_use]
+pub mod terminal;
+pub use terminal::Terminal;
 
-static mut TERMINAL: Global<TypeWriter> = Global::new(
-    || TypeWriter {
-        base: 0xB8000,
-        width: VGA_WIDTH,
-        height: VGA_HEIGHT,
-        ix: 0,
-        iy: 0,
-    },
-    "TERMINAL",
-);
-
-struct TypeWriter {
-    base: u32,
-    width: isize,
-    height: isize,
+pub struct TypeWriter {
+    base: *mut u16,
+    width: usize,
+    height: usize,
     ix: isize,
     iy: isize,
 }
 
 static COLOR_WHITE: u8 = 15;
 impl TypeWriter {
-    fn init(&mut self) {
-        for y in 0..=self.height {
-            for x in 0..=self.width {
+    pub fn new(base: u32, width: usize, height: usize) -> Self {
+        Self {
+            base: base as *mut u16,
+            width,
+            height,
+            ix: 0,
+            iy: 0,
+        }
+    }
+
+    pub fn init(&mut self) {
+        for y in 0..=self.height as isize {
+            for x in 0..=self.width as isize {
                 unsafe {
-                    *(self.base as *mut u16).offset(y * self.width + x) = 0;
+                    *self.base.offset(y * (self.width as isize) + x) = 0;
                 }
             }
         }
     }
 
     fn make_char(c: char, color: u8) -> u16 {
-        return (color as u16) << 8 | (c as u16);
+        (color as u16) << 8 | (c as u16)
     }
 
     fn backspace(&mut self) {
@@ -45,7 +45,7 @@ impl TypeWriter {
 
         if self.ix == 0 {
             self.iy -= 1;
-            self.ix = self.width;
+            self.ix = self.width as isize;
         }
 
         self.ix -= 1;
@@ -55,7 +55,7 @@ impl TypeWriter {
 
     fn put_char(&mut self, ix: isize, iy: isize, c: char, color: u8) {
         unsafe {
-            *(self.base as *mut u16).offset(iy * self.width + ix) = Self::make_char(c, color);
+            *self.base.offset(iy * (self.width as isize) + ix) = Self::make_char(c, color);
         }
     }
 
@@ -74,7 +74,7 @@ impl TypeWriter {
         self.put_char(self.ix, self.iy, c, color);
         self.ix += 1;
 
-        if self.ix >= self.width {
+        if self.ix >= self.width as isize {
             self.ix = 0;
             self.iy += 1;
         }
@@ -87,12 +87,9 @@ impl TypeWriter {
     }
 }
 
-pub fn init_screen() {
-    let mut terminal = unsafe { &mut TERMINAL };
-    terminal.with_wlock(|terminal| terminal.init())
-}
-
-pub fn print(msg: &str) {
-    let terminal = unsafe { &mut TERMINAL };
-    terminal.with_wlock(|terminal| terminal.write(msg))
+impl Write for TypeWriter {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.write(s);
+        Ok(())
+    }
 }
