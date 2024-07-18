@@ -1,7 +1,6 @@
 use crate::{
     boxed::Box,
     disk::{Disk, Stream},
-    lock,
     path::Path,
     sync::Global,
 };
@@ -62,7 +61,7 @@ impl Vfs {
     pub fn resolve(disk: &mut Global<Disk>) -> Result<(), FSError> {
         match Fat16::resolve(disk) {
             Ok(fs) => {
-                lock!(disk).register_filesystem(fs);
+                disk.with_wlock(|disk| disk.register_filesystem(fs));
                 return Ok(());
             }
             Err(FSError::NotOurFS) => (),
@@ -77,14 +76,14 @@ impl Vfs {
             return Err(IOError::InvalidDisk);
         };
 
-        let disk = lock!(Disk::get(disk_id));
+        Disk::get_mut(disk_id).with_rlock(|disk| -> Result<Box<dyn FileDescriptor>, IOError> {
+            let Some(ref fs) = disk.filesystem else {
+                return Err(IOError::NoFS);
+            };
 
-        let Some(ref fs) = disk.filesystem else {
-            return Err(IOError::NoFS);
-        };
+            let mut stream = disk.stream();
 
-        let mut stream = disk.stream();
-
-        fs.open(&mut stream, path, mode)
+            fs.open(&mut stream, path, mode)
+        })
     }
 }

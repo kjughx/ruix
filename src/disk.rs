@@ -46,7 +46,7 @@ impl Disk {
     }
 
     #[allow(static_mut_refs)]
-    pub fn get_mut(_id: usize) -> &'static mut Global<Disk> {
+    pub fn get_mut(_id: u32) -> &'static mut Global<Disk> {
         unsafe { &mut DISK0 }
     }
 

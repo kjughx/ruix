@@ -1,4 +1,4 @@
-use crate::{lock, sync::global::Global};
+use crate::sync::global::Global;
 
 const VGA_WIDTH: isize = 80;
 const VGA_HEIGHT: isize = 25;
@@ -88,11 +88,11 @@ impl TypeWriter {
 }
 
 pub fn init_screen() {
-    let mut terminal = unsafe { lock!(TERMINAL) };
-    terminal.init();
+    let mut terminal = unsafe { &mut TERMINAL };
+    terminal.with_wlock(|terminal| terminal.init())
 }
 
 pub fn print(msg: &str) {
-    let mut terminal = unsafe { lock!(TERMINAL) };
-    terminal.write(msg)
+    let terminal = unsafe { &mut TERMINAL };
+    terminal.with_wlock(|terminal| terminal.write(msg))
 }

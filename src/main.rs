@@ -25,7 +25,7 @@ pub extern "C" fn kernel_main() -> ! {
         Err(_) => print("Could not resolve disk 0"),
     }
 
-    Paging::switch(KernelPage::get());
+    KernelPage::switch();
     Paging::enable();
 
     print("Hello, World!");

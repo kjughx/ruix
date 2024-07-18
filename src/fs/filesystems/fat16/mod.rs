@@ -5,7 +5,6 @@ use crate::{
     boxed::{Box, Dyn},
     disk::{Disk, Stream},
     fs::{FileDescriptor, FileMode, FileSystem, IOError},
-    lock,
     path::Path,
     sync::Global,
     traceln,
@@ -29,12 +28,10 @@ impl Fat16 {
         }
     }
 
-    pub fn resolve(disk: &Global<Disk>) -> Result<Dyn<dyn FileSystem>, FSError> {
-        let (id, sector_size, header) = {
-            let disk = lock!(disk);
-
+    pub fn resolve(disk: &mut Global<Disk>) -> Result<Dyn<dyn FileSystem>, FSError> {
+        let (id, sector_size, header) = disk.with_rlock(|disk| -> (u32, usize, FatH) {
             (disk.id, disk.sector_size, disk.stream().read_new::<FatH>())
-        };
+        });
 
         if header.extended_header.signature != FAT16_SIGNATURE {
             return Err(FSError::NotOurFS);
@@ -43,10 +40,10 @@ impl Fat16 {
         let root_start = header.root();
         let size =
             header.primary_header.root_dir_entries as usize * FAT_DIRECTORY_ITEM_SIZE / sector_size;
-        let root_dir = {
-            let disk = lock!(disk);
+
+        let root_dir = disk.with_wlock(|disk| -> FatDirectory {
             FatDirectory::new(&mut disk.stream(), root_start, size)
-        };
+        });
 
         Ok(Dyn::new(Self::new(id, header, root_dir)))
     }
@@ -152,22 +149,23 @@ impl FileDescriptor for FatFileDescriptor {
             return Err(IOError::InvalidArgument);
         }
 
-        let disk = lock!(Disk::get(self.disk_id));
-        let mut stream = disk.stream();
+        Disk::get_mut(self.disk_id).with_rlock(|disk| {
+            let mut stream = disk.stream();
 
-        let start_sector = disk
-            .filesystem
-            .as_ref()
-            .unwrap()
-            .as_any()
-            .downcast_ref::<Fat16>()
-            .unwrap()
-            .cluster_to_sector(self.item.first_cluster());
+            let start_sector = disk
+                .filesystem
+                .as_ref()
+                .unwrap()
+                .as_any()
+                .downcast_ref::<Fat16>()
+                .unwrap()
+                .cluster_to_sector(self.item.first_cluster());
 
-        assert!(self.pos == 0, "No support for reading twice yet");
-        traceln!("{}", disk.sector_size);
-        stream.seek_sector(start_sector);
-        stream.read(buf, size * count);
+            assert!(self.pos == 0, "No support for reading twice yet");
+            traceln!("{}", disk.sector_size);
+            stream.seek_sector(start_sector);
+            stream.read(buf, size * count);
+        });
 
         Ok(())
     }

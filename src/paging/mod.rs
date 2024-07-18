@@ -1,4 +1,7 @@
-use crate::{lock, sync::Global, Error};
+use core::arch::asm;
+use core::ptr::{addr_of, addr_of_mut};
+
+use crate::{sync::Global, Error};
 
 pub mod pagedirectory;
 pub mod pagetable;
@@ -12,19 +15,24 @@ static mut KERNEL_DIRECTORY: Global<PageDirectory> = Global::new(
 
 pub struct KernelPage;
 impl KernelPage {
-    pub fn get() -> PageDirectory {
-        let directory = unsafe { lock!(KERNEL_DIRECTORY) };
-        directory.inner().clone()
+    #[allow(static_mut_refs)]
+    pub fn get() -> &'static Global<PageDirectory> {
+        unsafe { &KERNEL_DIRECTORY }
     }
 
-    pub fn load() {
-        let kernel_directory = unsafe { lock!(KERNEL_DIRECTORY) };
-        kernel_directory.load();
+    #[allow(static_mut_refs)]
+    pub fn get_mut() -> &'static mut Global<PageDirectory> {
+        unsafe { &mut KERNEL_DIRECTORY }
+    }
+
+    pub fn switch() {
+        let directory = Self::get();
+        directory.with_rlock(|dir| Paging::switch(dir))
     }
 
     pub fn map(vaddr: Addr, paddr: Addr, flags: Flags) -> Result<(), Error> {
-        let mut directory = unsafe { lock!(KERNEL_DIRECTORY) };
-        directory.map(vaddr, paddr, flags)
+        let mut directory = Self::get_mut();
+        directory.with_wlock(|dir| dir.map(vaddr, paddr, flags))
     }
 }
 
@@ -35,7 +43,7 @@ pub struct Paging;
 impl Paging {
     pub fn enable() {
         unsafe {
-            core::arch::asm!(
+            asm!(
                 r#"
                 mov eax, cr0
                 or eax, 0x80000000
@@ -45,9 +53,17 @@ impl Paging {
         }
     }
 
-    pub fn switch(directory: PageDirectory) {
-        directory.load();
-        unsafe { *lock!(CURRENT_DIRECTORY) = directory };
+    pub fn switch(directory: &PageDirectory) {
+        unsafe {
+            asm!(
+                r#"
+                mov cr3, eax
+            "#, in("eax") directory.ptr()
+            )
+        }
+        unsafe {
+            CURRENT_DIRECTORY.with_wlock(|this| *this = *directory);
+        }
     }
 }
 

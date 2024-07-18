@@ -3,7 +3,7 @@ use core::{
     ops::{Deref, DerefMut},
 };
 
-use super::lock::Lock;
+use super::lock::RWLock;
 
 enum State<T, F> {
     Uninit(F),
@@ -12,7 +12,7 @@ enum State<T, F> {
 }
 pub struct Global<T, F = fn() -> T> {
     data: UnsafeCell<State<T, F>>,
-    lock: Lock,
+    lock: RWLock,
 }
 
 unsafe impl<T, F: FnOnce() -> T> Sync for Global<T, F> {}
@@ -21,17 +21,43 @@ impl<T, F: FnOnce() -> T> Global<T, F> {
     pub const fn new(f: F, id: &'static str) -> Self {
         Self {
             data: UnsafeCell::new(State::Uninit(f)),
-            lock: Lock::new(Some(id)),
+            lock: RWLock::new(Some(id)),
         }
     }
 
-    pub fn lock(&self) -> GlobalUnlocked<'_, T, F> {
-        self.lock.lock();
+    pub fn wlock(&mut self) -> GlobalUnlocked<'_, T, F> {
+        self.lock.wlock();
+        GlobalUnlocked::new(self)
+    }
+
+    fn rlock(&self) -> GlobalUnlocked<'_, T, F> {
+        self.lock.rlock();
         GlobalUnlocked::new(self)
     }
 
     pub fn id(&self) -> &'static str {
-        self.lock.id()
+        self.lock.id().unwrap()
+    }
+
+    pub fn with_wlock<S, U>(&mut self, f: S) -> U
+    where
+        S: FnOnce(&mut T) -> U,
+    {
+        let mut inner = self.wlock();
+        let r = f(&mut inner);
+        drop(inner);
+        self.lock.wunlock();
+        return r;
+    }
+
+    pub fn with_rlock<S, U>(&self, f: S) -> U
+    where
+        S: FnOnce(&T) -> U,
+    {
+        let inner = self.rlock();
+        let r = f(&inner);
+        self.lock.runlock();
+        return r;
     }
 }
 
@@ -88,11 +114,12 @@ impl<'a, T: 'a, F: FnOnce() -> T> GlobalUnlocked<'a, T, F> {
     }
 }
 
-impl<'a, T: 'a, F: FnOnce() -> T> Drop for GlobalUnlocked<'a, T, F> {
-    fn drop(&mut self) {
-        self.global.lock.unlock();
-    }
-}
+// impl<'a, T: 'a, F: FnOnce() -> T> Drop for GlobalUnlocked<'a, T, F> {
+//     fn drop(&mut self) {
+//         if self.global.lock
+//         self.global.lock.wunlock();
+//     }
+// }
 
 impl<'a, T: 'a, F: FnOnce() -> T> Deref for GlobalUnlocked<'a, T, F> {
     type Target = T;

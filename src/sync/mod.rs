@@ -4,7 +4,7 @@ pub mod mutex;
 pub mod lock;
 
 pub use global::Global;
-pub use lock::Lock;
+pub use lock::RWLock;
 
 #[macro_export]
 macro_rules! spinwhile {

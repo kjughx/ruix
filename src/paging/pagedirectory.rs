@@ -30,6 +30,10 @@ impl PageDirectory {
         Self(tables)
     }
 
+    pub fn ptr(&self) -> *mut PageTable {
+        self.0
+    }
+
     pub fn inspect(&self, drange: Range<usize>, trange: Range<usize>) {
         traceln!("Page Directory");
         for i in drange {
@@ -57,16 +61,6 @@ impl PageDirectory {
         }
 
         free(self.0)
-    }
-
-    pub fn load(&self) {
-        unsafe {
-            asm!(
-                r#"
-                mov cr3, eax
-            "#, in("eax") self.0
-            )
-        }
     }
 
     fn get_table(&self, page: Page) -> PageTable {
