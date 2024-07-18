@@ -1,6 +1,6 @@
 use core::arch::asm;
 
-use crate::{sync::Global, Error};
+use crate::{sync::Global, traceln, Error};
 
 pub mod pagedirectory;
 pub mod pagetable;
@@ -22,7 +22,7 @@ impl KernelPage {
         directory.with_rlock(Paging::switch)
     }
 
-    pub fn map(vaddr: Addr, paddr: Addr, flags: Flags) -> Result<(), Error> {
+    pub fn map(vaddr: Addr, paddr: Addr, flags: Flags) {
         let directory = Self::get_mut();
         directory.with_wlock(|dir| dir.map(vaddr, paddr, flags))
     }
@@ -77,12 +77,20 @@ impl Addr {
         Self(self.0 + (PAGE_SIZE - self.0 % PAGE_SIZE))
     }
 
-    fn align_lower(&self) -> Self {
+    pub fn align_lower(&self) -> Self {
         if self.is_aligned() {
             return *self;
         }
 
-        Self(self.0 - self.0 % PAGE_SIZE)
+        Self(self.0 - (PAGE_SIZE - self.0 % PAGE_SIZE))
+    }
+
+    pub fn align_upper(&self) -> Self {
+        if self.is_aligned() {
+            return *self;
+        }
+
+        Self(self.0 + (PAGE_SIZE - self.0 % PAGE_SIZE))
     }
 
     fn is_aligned(&self) -> bool {

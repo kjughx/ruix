@@ -31,7 +31,7 @@ impl FatDirectory {
         let total = Self::get_total_items(stream);
 
         let mut items = Array::new(entries);
-        for i in 0..total as isize {
+        for i in 0..total as usize {
             let item = FatDirectoryItem::new(stream);
             items[i] = item;
         }

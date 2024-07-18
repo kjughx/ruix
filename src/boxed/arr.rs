@@ -57,28 +57,28 @@ impl<T> Array<T> {
     }
 }
 
-impl<T> Index<isize> for Array<T> {
+impl<T> Index<usize> for Array<T> {
     type Output = T;
-    fn index(&self, index: isize) -> &Self::Output {
-        unsafe { self.data.as_ptr().offset(index).as_ref().unwrap() }
+    fn index(&self, index: usize) -> &Self::Output {
+        unsafe { self.data.as_ptr().add(index).as_ref().unwrap() }
     }
 }
 
-impl<T> IndexMut<isize> for Array<T> {
-    fn index_mut(&mut self, index: isize) -> &mut Self::Output {
-        unsafe { self.data.as_ptr().offset(index).as_mut().unwrap() }
+impl<T> IndexMut<usize> for Array<T> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        unsafe { self.data.as_ptr().add(index).as_mut().unwrap() }
     }
 }
 
 pub struct ArrIter<'a, T> {
     arr: &'a Array<T>,
-    index: isize,
+    index: usize,
 }
 
 impl<'a, T> Iterator for ArrIter<'a, T> {
     type Item = &'a T;
     fn next(&mut self) -> Option<Self::Item> {
-        if self.index >= self.arr.cap as isize {
+        if self.index >= self.arr.cap {
             return None;
         }
 

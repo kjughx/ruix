@@ -25,7 +25,12 @@ impl<T, F: FnOnce() -> T> Global<T, F> {
         }
     }
 
-    pub fn wlock(&mut self) -> GlobalUnlocked<'_, T, F> {
+    pub unsafe fn force(&mut self) -> GlobalUnlocked<'_, T, F> {
+        GlobalUnlocked::new(self)
+    }
+
+    /// # Safety: Unsafe because it needs manual unlock
+    pub unsafe fn wlock(&mut self) -> GlobalUnlocked<'_, T, F> {
         self.lock.wlock();
         GlobalUnlocked::new(self)
     }
@@ -43,7 +48,7 @@ impl<T, F: FnOnce() -> T> Global<T, F> {
     where
         S: FnOnce(&mut T) -> U,
     {
-        let mut inner = self.wlock();
+        let mut inner = unsafe { self.wlock() };
         let r = f(&mut inner);
         self.lock.wunlock();
         r

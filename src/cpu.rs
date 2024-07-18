@@ -1,4 +1,8 @@
+use core::arch::asm;
 use core::fmt::Display;
+
+use crate::paging::Paging;
+use crate::task::Task;
 
 use crate::packed::{packed, Packed};
 
@@ -8,24 +12,11 @@ const USER_CODE_SEGMENT: usize = 0x1B;
 const PROGRAM_VIRTUAL_STACK_START: usize = 0x3FF000;
 
 #[allow(dead_code)]
-pub struct Registers {
-    edi: usize,
-    esi: usize,
-    ebp: usize,
-    ebx: usize,
-    edx: usize,
-    ecx: usize,
-    eax: usize,
 
-    ip: usize,
-    cs: usize,
-    flags: usize,
-    esp: usize,
-    ss: usize,
-}
+pub type Registers = InterruptFrame;
 
-impl Default for Registers {
-    fn default() -> Self {
+impl Registers {
+    pub fn user_default() -> Self {
         Self {
             edi: 0,
             esi: 0,
@@ -34,31 +25,129 @@ impl Default for Registers {
             edx: 0,
             ecx: 0,
             eax: 0,
+            unused: 0,
 
             ip: PROGRAM_VIRTUAL_ADDRESS,
             cs: USER_CODE_SEGMENT,
             flags: 0,
-            esp: PROGRAM_VIRTUAL_STACK_START,
+            sp: PROGRAM_VIRTUAL_STACK_START,
             ss: USER_DATA_SEGMENT,
         }
+    }
+
+    pub fn save(&mut self, frame: InterruptFrame) {
+        self.edi = frame.edi;
+        self.esi = frame.esi;
+        self.ebp = frame.ebp;
+        self.ebx = frame.ebx;
+        self.edx = frame.edx;
+        self.ecx = frame.ecx;
+        self.eax = frame.eax;
+        self.ip = frame.ip;
+        self.cs = frame.cs;
+        self.flags = frame.flags;
+        self.sp = frame.sp;
+        self.ss = frame.ss;
+    }
+
+    /// # Safety: Unsafe because it fucks with registers
+    #[naked]
+    #[no_mangle]
+    pub unsafe extern "C" fn restore(regs: *const Registers) {
+        asm!(
+            r#"
+            push ebp
+            mov ebp, esp
+            mov ebx, [ebp+8] // ebx = regs;
+            mov edi, [ebx]   // edi = *regs;
+            mov esi, [ebx+4] // esi = *(regs + 4);
+            mov ebp, [ebx+8] // ebp = *(regs + 8);
+            mov edx, [ebx+16]
+            mov ecx, [ebx+20]
+            mov eax, [ebx+24]
+            mov ebx, [ebx+12]
+            pop ebp
+            ret
+        "#,
+            options(noreturn)
+        )
+    }
+}
+
+pub struct CPU;
+impl CPU {
+    pub fn return_to_task(task: &Task) {
+        Paging::switch(&task.page_directory);
+        let registers = &task.registers as *const Registers;
+        unsafe { Self::_user_return(registers) };
+    }
+
+    #[naked]
+    unsafe extern "C" fn _user_return(regs: *const Registers) {
+        asm!(
+            r#"
+            mov ebp, esp
+            // PUSH THE DATA SEGMENT (SS WILL BE FINE)
+            // PUSH THE STACK ADDRESS
+            // PUSH THE FLAGS
+            // PUSH THE CODE SEGMENT
+            // PUSH IP
+
+            // Let's access the structure passed to us
+            mov ebx, [ebp+4]
+            // push the data/stack selector
+            push dword ptr [ebx+0x30]
+            // Push the stack pointer
+            push dword ptr [ebx+0x2c]
+
+            // Push the flags
+            // We need to set the IF (Interrupt Enable flag) otherwise the user process might never yield
+            pushfd
+            pop eax
+            or eax, 0x200
+            push eax
+
+            // Push the code segment
+            push dword ptr [ebx+0x24]
+
+            // Push the IP to execute
+            push dword ptr [ebx+0x20]
+
+            // Setup some segment registers
+            mov ax, [ebx+0x30]
+            mov ds, ax
+            mov es, ax
+            mov fs, ax
+            mov gs, ax
+
+            push dword ptr [ebp+4]
+            call {}
+            add esp, 4
+
+            // Let's leave kernel land and execute in user land!
+            iretd
+
+            "#, sym Registers::restore,
+            options(noreturn)
+        )
     }
 }
 
 #[packed]
 pub struct InterruptFrame {
-    pub edi: u32,
-    pub esi: u32,
-    pub ebp: u32,
-    pub unused: u32,
-    pub ebx: u32,
-    pub edx: u32,
-    pub ecx: u32,
-    pub eax: u32,
-    pub ip: u32,
-    pub cs: u32,
-    pub flags: u32,
-    pub sp: u32,
-    pub ss: u32,
+    pub edi: usize,
+    pub esi: usize,
+    pub ebp: usize,
+    pub unused: usize,
+    pub ebx: usize,
+    pub edx: usize,
+    pub ecx: usize,
+    pub eax: usize,
+    pub ip: usize,
+    pub cs: usize,
+    pub flags: usize,
+    pub sp: usize,
+    pub ss: usize,
 }
 
 impl Display for InterruptFrame {

@@ -1,9 +1,9 @@
 use super::{Addr, Flags, Offset, ENTRIES_PER_TABLE, PAGE_SIZE};
 use crate::heap::{alloc, free};
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct PageTableEntry(usize);
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct PageTable(pub *mut PageTableEntry);
 
 pub const ENTRY_SIZE: usize = core::mem::size_of::<PageTableEntry>();

@@ -3,8 +3,6 @@ use core::ops::Range;
 use crate::heap::{alloc, free};
 use crate::{trace, traceln};
 
-use crate::Error;
-
 use super::{
     pagetable::{PageTable, PageTableEntry, ENTRY_SIZE},
     Addr, Flags, Offset, Page, ENTRIES_PER_TABLE, PAGE_SIZE,
@@ -77,30 +75,15 @@ impl PageDirectory {
         table.set(tentry, entry)
     }
 
-    pub fn map(&mut self, vaddr: Addr, paddr: Addr, flags: Flags) -> Result<(), Error> {
-        if !vaddr.is_aligned() || !paddr.is_aligned() {
-            return Err(Error::InvalidArgument);
-        }
+    pub fn map(&mut self, vaddr: Addr, paddr: Addr, flags: Flags) {
+        assert!(vaddr.is_aligned(), "Invalid virtual address");
+        assert!(paddr.is_aligned(), "Invalid physical address");
 
         self.set(vaddr, PageTableEntry::new(paddr, flags));
-
-        Ok(())
     }
 
-    pub fn map_range(
-        &mut self,
-        vstart: Addr,
-        pstart: Addr,
-        pend: Addr,
-        flags: Flags,
-    ) -> Result<(), Error> {
-        if !vstart.is_aligned()
-            || !pstart.is_aligned()
-            || pend.is_aligned()
-            || pend.raw() < pstart.raw()
-        {
-            return Err(Error::InvalidArgument);
-        }
+    pub fn map_range(&mut self, vstart: Addr, pstart: Addr, pend: Addr, flags: Flags) {
+        assert!(pend.raw() >= pstart.raw(), "Invalid address range");
 
         let count = (pend.raw() - pstart.raw()) / PAGE_SIZE;
         for page in 0..count {
@@ -108,10 +91,8 @@ impl PageDirectory {
                 vstart.offset(page * PAGE_SIZE),
                 pstart.offset(page * PAGE_SIZE),
                 flags,
-            )?;
+            );
         }
-
-        Ok(())
     }
 
     pub fn get_entry(&self, vaddr: Addr) -> Option<PageTableEntry> {

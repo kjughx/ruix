@@ -4,7 +4,7 @@ mod private;
 use crate::{
     boxed::{Box, Dyn},
     disk::{Disk, Offset, Sector, Stream},
-    fs::{FileDescriptor, FileMode, FileSystem, IOError},
+    fs::{FileDescriptor, FileMode, FileStat, FileSystem, IOError},
     path::Path,
     sync::Global,
     traceln,
@@ -86,7 +86,7 @@ impl FileSystem for Fat16 {
         &self,
         stream: &mut dyn Stream,
         path: Path,
-        _mode: FileMode,
+        mode: FileMode,
     ) -> Result<Box<dyn FileDescriptor>, IOError> {
         let Some(entry) = self.get_directory_entry(stream, path) else {
             return Err(IOError::NoSuchFile);
@@ -97,7 +97,8 @@ impl FileSystem for Fat16 {
             FatItem::File(f) => f,
         };
 
-        let desc: Box<dyn FileDescriptor> = Box::new(FatFileDescriptor::new(self.disk_id, file));
+        let desc: Box<dyn FileDescriptor> =
+            Box::new(FatFileDescriptor::new(self.disk_id, file, mode));
 
         Ok(desc)
     }
@@ -110,9 +111,6 @@ impl FileSystem for Fat16 {
         todo!()
     }
 
-    fn stat(&self) {
-        todo!()
-    }
     fn name(&self) -> &str {
         todo!()
     }
@@ -130,14 +128,16 @@ pub struct FatFileDescriptor {
     item: FatDirectoryItem,
     disk_id: u32,
     pos: usize,
+    mode: FileMode,
 }
 
 impl FatFileDescriptor {
-    fn new(disk_id: u32, item: FatDirectoryItem) -> Self {
+    fn new(disk_id: u32, item: FatDirectoryItem, mode: FileMode) -> Self {
         Self {
             disk_id,
             item,
             pos: 0,
+            mode,
         }
     }
 }
@@ -181,5 +181,19 @@ impl FileDescriptor for FatFileDescriptor {
             SeekMode::EndOfFile => self.pos = (self.item.filesize as isize - offset) as usize,
             SeekMode::StartOfFile => self.pos = offset as usize,
         }
+    }
+
+    fn stat(&self) -> FileStat {
+        let descriptor = self.as_any().downcast_ref::<FatFileDescriptor>().unwrap();
+        let size = descriptor.item.filesize;
+        let mode = descriptor.mode;
+        FileStat {
+            mode,
+            size: size as usize,
+        }
+    }
+
+    fn as_any(&self) -> &dyn core::any::Any {
+        self
     }
 }

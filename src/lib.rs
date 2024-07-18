@@ -21,7 +21,10 @@ pub mod idt;
 pub mod io;
 pub mod paging;
 pub mod path;
+pub mod process;
 pub mod start;
+pub mod string;
+pub mod task;
 pub mod tty;
 #[macro_use]
 pub mod serial;

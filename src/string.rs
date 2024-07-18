@@ -33,6 +33,16 @@ impl Str {
     }
 }
 
+impl From<&str> for Str {
+    fn from(value: &str) -> Self {
+        let mut arr = Array::new(value.len());
+        for (i, b) in value.bytes().enumerate() {
+            arr[i] = b;
+        }
+        Self(arr)
+    }
+}
+
 impl Default for Str {
     fn default() -> Self {
         Self::new(0)
