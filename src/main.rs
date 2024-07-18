@@ -6,6 +6,7 @@ use ruix::{
     fs::Vfs,
     gdt::GDT,
     idt::IDT,
+    paging::{KernelPage, Paging},
     traceln,
     tty::{init_screen, print},
 };
@@ -23,6 +24,9 @@ pub extern "C" fn kernel_main() -> ! {
         Ok(()) => (),
         Err(_) => print("Could not resolve disk 0"),
     }
+
+    Paging::switch(KernelPage::get());
+    Paging::enable();
 
     print("Hello, World!");
     traceln!("Hello, World!");

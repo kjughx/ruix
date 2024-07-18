@@ -18,6 +18,7 @@ pub mod gdt;
 pub mod heap;
 pub mod idt;
 pub mod io;
+pub mod paging;
 pub mod path;
 pub mod start;
 pub mod tty;
@@ -30,4 +31,8 @@ pub trait Packed: Sized {}
 pub trait FromBytes: Packed {
     type Output;
     fn from_bytes(bytes: &[u8]) -> Self::Output;
+}
+
+pub enum Error {
+    InvalidArgument,
 }
