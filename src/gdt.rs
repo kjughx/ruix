@@ -22,8 +22,8 @@ impl From<&[u8; GDT_SIZE]> for __GDT {
 
 static GDTS: [GDT; GDT_SEGMENTS] = [
     GDT::new(0x00, 0x00, 0x00, 0x00),
-    GDT::new(0x00, 0xFFFFFFFF, 0b10011010, 0b1100), // Kernel Code Segment
-    GDT::new(0x00, 0xFFFFFFFF, 0b10010010, 0b1100), // Kernel Data Segment
+    GDT::new(0x00, 0xFFFFFFFF, 0b10011011, 0b1100), // Kernel Code Segment
+    GDT::new(0x00, 0xFFFFFFFF, 0b10010011, 0b1100), // Kernel Data Segment
 ];
 static __GDTS: [__GDT; GDT_SEGMENTS] = [GDTS[0].encode(), GDTS[1].encode(), GDTS[2].encode()];
 
@@ -54,7 +54,7 @@ impl GDT {
 
     pub fn load() {
         unsafe {
-            GDT_POINTER.size = (GDT_SEGMENTS * core::mem::size_of::<__GDT>()) as u16;
+            GDT_POINTER.size = (GDT_SEGMENTS * core::mem::size_of::<__GDT>() - 1) as u16;
             GDT_POINTER.base = __GDTS.as_ptr() as u32;
             asm!("lgdt [{0}]", in(reg) core::ptr::addr_of!(GDT_POINTER))
         }

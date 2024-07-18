@@ -1,12 +1,11 @@
 #![no_std]
 #![no_main]
 
-use core::hint;
-
 use ruix::{
     disk::Disk,
     fs::Vfs,
     gdt::GDT,
+    idt::IDT,
     traceln,
     tty::{init_screen, print},
 };
@@ -17,6 +16,8 @@ pub extern "C" fn kernel_main() -> ! {
 
     GDT::load();
 
+    IDT::load();
+
     // Resolve the connected disks
     match Vfs::resolve(Disk::get_mut(0)) {
         Ok(()) => (),
@@ -26,6 +27,6 @@ pub extern "C" fn kernel_main() -> ! {
     print("Hello, World!");
     traceln!("Hello, World!");
     loop {
-        hint::spin_loop()
+        unsafe { core::arch::asm!("hlt", options(noreturn)) };
     }
 }

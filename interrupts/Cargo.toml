@@ -1,0 +1,15 @@
+[package]
+name = "interrupts"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "1", features = ["full"] }
+
+[lib]
+proc-macro = true
+
+[build]
+target = "i686-unknown-linux-gnu"
