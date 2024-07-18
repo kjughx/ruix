@@ -1,5 +1,4 @@
 use core::arch::asm;
-use core::ptr::{addr_of, addr_of_mut};
 
 use crate::{sync::Global, Error};
 

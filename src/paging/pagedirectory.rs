@@ -1,4 +1,3 @@
-use core::arch::asm;
 use core::ops::Range;
 
 use crate::heap::{alloc, free};
@@ -64,7 +63,7 @@ impl PageDirectory {
     }
 
     fn get_table(&self, page: Page) -> PageTable {
-        PageTable::from_ptr(unsafe { self.0.add(page.0) })
+        unsafe { PageTable::from_ptr(self.0.add(page.0)) }
     }
 
     fn set(&mut self, vaddr: Addr, entry: PageTableEntry) {

@@ -41,11 +41,11 @@ impl PageTable {
         free(self.0);
     }
 
-    pub fn from_ptr(ptr: *mut PageTable) -> Self {
+    /// # Safety
+    pub unsafe fn from_ptr(ptr: *mut PageTable) -> Self {
         let table_with_flags = unsafe { *ptr };
         let table_ptr = table_with_flags.0 as usize & 0xfffff000;
-        let table = Self(table_ptr as *mut PageTableEntry);
-        table
+        Self(table_ptr as *mut PageTableEntry)
     }
 
     pub fn get(&self, offset: Offset) -> PageTableEntry {

@@ -45,9 +45,8 @@ impl<T, F: FnOnce() -> T> Global<T, F> {
     {
         let mut inner = self.wlock();
         let r = f(&mut inner);
-        drop(inner);
         self.lock.wunlock();
-        return r;
+        r
     }
 
     pub fn with_rlock<S, U>(&self, f: S) -> U
@@ -57,7 +56,7 @@ impl<T, F: FnOnce() -> T> Global<T, F> {
         let inner = self.rlock();
         let r = f(&inner);
         self.lock.runlock();
-        return r;
+        r
     }
 }
 

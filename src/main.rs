@@ -31,6 +31,6 @@ pub extern "C" fn kernel_main() -> ! {
     println!("Hello, World!");
     traceln!("Hello, World!");
     loop {
-        unsafe { core::arch::asm!("hlt", options(noreturn)) };
+        unsafe { core::arch::asm!("hlt") };
     }
 }

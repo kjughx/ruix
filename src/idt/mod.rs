@@ -61,7 +61,7 @@ impl IDTDescriptor {
     }
 
     fn new(cb: unsafe extern "C" fn()) -> Self {
-        let addr = cb as u32;
+        let addr = cb as *const () as u32;
         Self {
             offset_low: (addr & 0xFFFF) as u16,
             selector: KERNEL_CODE_SELECTOR,

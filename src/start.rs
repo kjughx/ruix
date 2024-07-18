@@ -1,5 +1,5 @@
+use crate::__trace;
 use core::arch::asm;
-use crate::{__trace, traceln};
 
 #[no_mangle]
 pub static DATA_SEG: u32 = 0x10;
