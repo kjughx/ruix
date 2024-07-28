@@ -11,8 +11,8 @@ use ruix::{
     tty::Terminal,
 };
 
-#[no_mangle] // don't mangle the name of this function
-pub extern "C" fn kernel_main() -> ! {
+#[no_mangle]
+extern "C" fn kmain() -> ! {
     Terminal::init();
 
     GDT::load();
@@ -20,7 +20,8 @@ pub extern "C" fn kernel_main() -> ! {
     IDT::load();
 
     // Resolve the connected disks
-    match Vfs::resolve(Disk::get_mut(0)) {
+    let disk = Disk::get_mut(0);
+    match Vfs::resolve(disk) {
         Ok(()) => (),
         Err(_) => println!("Could not resolve disk 0"),
     }
@@ -30,6 +31,7 @@ pub extern "C" fn kernel_main() -> ! {
 
     println!("Hello, World!");
     traceln!("Hello, World!");
+
     loop {
         unsafe { core::arch::asm!("hlt") };
     }

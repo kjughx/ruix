@@ -28,7 +28,7 @@ extern "C" fn _start() -> ! {
             "out 0x21, al",
             "mov al, 00000001b",
             "out 0x21, al",
-            "call kernel_main",
+            "call kmain",
             "hlt",
             options(noreturn)
         );

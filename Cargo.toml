@@ -8,6 +8,11 @@ packed = {path = "packed"}
 interrupts = {path = "interrupts" }
 global = {path = "global"}
 
+
+[[bin]]
+name = "kernel"
+path = "src/kernel.rs"
+
 # the profile used for `cargo build`
 [profile.dev]
 panic = "abort" # disable stack unwinding on panic

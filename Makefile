@@ -18,13 +18,13 @@ image: $(BINS)
 dev: prelude _dev image
 _dev: $(SRCS)
 	@cargo build
-	@cp $(OBJ)/i686-unknown-none/debug/ruix build/kernelfull.o
+	@cp $(OBJ)/i686-unknown-none/debug/kernel build/kernelfull.o
 	@objcopy --target elf32-i386 -O binary build/kernelfull.o $(BIN)/kernel.bin
 
 release: prelude _release image
 _release: $(SRCS)
 	@cargo build --release
-	@cp $(OBJ)/i686-unknown-none/release/ruix build/kernelfull.o
+	@cp $(OBJ)/i686-unknown-none/release/kernel build/kernelfull.o
 	@objcopy --target elf32-i386 -O binary build/kernelfull.o $(BIN)/kernel.bin
 
 
