@@ -2,40 +2,34 @@ SRC=src
 BIN=bin
 OBJ=build
 
-TARGET=i686-elf
-CFLAGS=-std=gnu99 -Wall -Werror -Wno-cpp -O0 -Isrc/ -Iinc/ -ffreestanding -falign-jumps -falign-functions -falign-labels -falign-loops -fstrength-reduce -fomit-frame-pointer -finline-functions -fno-builtin -nostartfiles -nodefaultlibs -nostdlib
-LDFLAGS=-g -relocatable
-CC=gcc
-
 BOOT_SRCS = boot/boot.asm
 BINS=$(BIN)/boot.bin $(BIN)/kernel.bin
 
-R_SRCS := $(shell find src -name "*.rs")
-C_SRCS := $(shell find src -name "*.c")
-ASM_SRCS := $(filter-out src/boot/boot.asm, $(shell find src -name "*.asm"))
+SRCS := $(shell find src -name "*.rs")
 
-OBJS = $(patsubst src/%.asm, $(OBJ)/%.asm.o, $(ASM_SRCS))
+all: dev
 
-all: prelude $(BINS)
+image: $(BINS)
 	@rm -f $(BIN)/os.bin
 	@dd status=none if=$(BIN)/boot.bin >> $(BIN)/os.bin
 	@dd status=none if=$(BIN)/kernel.bin >> $(BIN)/os.bin
 	@dd status=none if=/dev/zero bs=1024 count=1024 >> $(BIN)/os.bin
 
-$(BIN)/boot.bin: $(SRC)/boot/boot.asm
-	nasm -f bin $< -o $@
-
-$(OBJ)/%.asm.o: $(SRC)/%.asm
-	@mkdir -p $(dir $@)
-	nasm -f elf $< -o $@
-
-$(BIN)/kernel.bin: rust
-
-.PHONY: rust
-rust: $(OBJS) $(R_SRCS) $(C_SRCS)
+dev: prelude _dev image
+_dev: $(SRCS)
 	@cargo build
 	@cp $(OBJ)/i686-unknown-none/debug/ruix build/kernelfull.o
 	@objcopy --target elf32-i386 -O binary build/kernelfull.o $(BIN)/kernel.bin
+
+release: prelude _release image
+_release: $(SRCS)
+	@cargo build --release
+	@cp $(OBJ)/i686-unknown-none/release/ruix build/kernelfull.o
+	@objcopy --target elf32-i386 -O binary build/kernelfull.o $(BIN)/kernel.bin
+
+
+$(BIN)/boot.bin: $(SRC)/boot/boot.asm
+	nasm -f bin $< -o $@
 
 .PHONY: prelude
 prelude:
@@ -47,13 +41,13 @@ clean:
 	@rm -rf $(OBJ)/* $(BIN)/*
 
 .PHONY: gdb
-gdb: all
-	gdb --command=debug.gdb
+gdb: dev
+	rust-gdb --command=debug.gdb
 
 .PHONY: qemu
-qemu: all
+qemu: $(BINS)
 	qemu-system-i386 -hda bin/os.bin -serial stdio
 
 .PHONY: trace
-trace: all
+trace: $(BINS)
 	qemu-system-i386 -hda bin/os.bin -serial stdio -display none

@@ -15,6 +15,7 @@ pkgs.mkShell {
     ];
     env = {
         SHELL="/usr/bin/fish";
+        NIX_ENFORCE_PURITY=0;
     };
     shellHook = ''
         alias ls=eza

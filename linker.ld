@@ -2,27 +2,27 @@ ENTRY(_start)
 SECTIONS
 {
     . = 1M;
-    .start :{
+    .start : ALIGN(4096) {
         *(.start)
         . = 1M + 512;
     } =0
 
-    .text : {
+    .text : ALIGN(4096) {
         *(.text)
         *(.text.*)
     }
 
-    .rodata : {
+    .rodata : ALIGN(4096) {
         *(.rodata)
         *(.rodata..*)
     }
 
-    .data : {
+    .data : ALIGN(4096) {
         *(.data)
         *(.data.*)
     }
 
-    .bss : {
+    .bss : ALIGN(4096) {
         *(COMMON)
         *(.bss)
     }
