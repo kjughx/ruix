@@ -42,7 +42,12 @@ clean:
 
 .PHONY: gdb
 gdb: dev
-	rust-gdb --command=debug.gdb
+	rust-gdb \
+		-ex "set confirm off" \
+		-ex="target remote | qemu-system-i386 -display none -S -gdb stdio -hda bin/os.bin" \
+		-ex="add-symbol-file build/kernelfull.o 0x101000" \
+		-ex="break kmain"
+
 
 .PHONY: qemu
 qemu: dev

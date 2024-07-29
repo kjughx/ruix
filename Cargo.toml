@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-packed = {path = "packed"}
-interrupts = {path = "interrupts" }
-global = {path = "global"}
+packed = {path = "macros/packed"}
+interrupts = {path = "macros/interrupts" }
+global = {path = "macros/global"}
 
 
 [[bin]]
