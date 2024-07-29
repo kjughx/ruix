@@ -96,9 +96,15 @@ impl<T> Clone for Shared<T> {
 
 pub struct Weak<T>(NonNull<SharedInner<T>>);
 
+impl<T> Default for Weak<T> {
+    fn default() -> Self {
+        unsafe { Weak(NonNull::new_unchecked(0x3FFFFFFF as *mut SharedInner<T>)) }
+    }
+}
+
 impl<T> Weak<T> {
     pub fn new() -> Self {
-        unsafe { Weak(NonNull::new_unchecked(0x3FFFFFFF as *mut SharedInner<T>)) }
+        Self::default()
     }
 }
 

@@ -2,15 +2,12 @@
 #![no_main]
 
 use ruix::{
-    cpu,
     disk::Disk,
     fs::Vfs,
     gdt::GDT,
     idt::IDT,
     paging::{KernelPage, Paging},
-    println,
-    process::Process,
-    traceln,
+    println, traceln,
     tty::Terminal,
 };
 

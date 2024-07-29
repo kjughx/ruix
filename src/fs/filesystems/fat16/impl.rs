@@ -2,7 +2,7 @@ use crate::{boxed::Array, disk::Stream};
 use core::mem;
 
 use super::private::{FatDirectoryItem, FAT_DIRECTORY_ITEM_SIZE};
-use crate::disk::{Offset, Sector};
+use crate::disk::Offset;
 
 pub(super) const FAT16_SIGNATURE: u8 = 0x29;
 const _FAT16_ENTRY_SIZE: u16 = 0x02;

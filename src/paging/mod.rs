@@ -1,6 +1,6 @@
 use core::arch::asm;
 
-use crate::{sync::Global, traceln, Error};
+use crate::sync::Global;
 
 pub mod pagedirectory;
 pub mod pagetable;

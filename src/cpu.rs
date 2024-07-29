@@ -50,7 +50,8 @@ impl Registers {
         self.ss = frame.ss;
     }
 
-    /// # Safety: Unsafe because it fucks with registers
+    /// # Safety
+    // This fucks with registers
     #[naked]
     #[no_mangle]
     pub unsafe extern "C" fn restore(regs: *const Registers) {

@@ -9,7 +9,7 @@ use crate::{
     sync::Global,
 };
 
-use private::{FatDirectoryItem, FatH, FAT_DIRECTORY_ITEM_SIZE};
+use private::{FatDirectoryItem, FatH};
 use r#impl::{FatDirectory, FatItem, FAT16_SIGNATURE};
 
 pub struct Fat16 {
@@ -28,9 +28,8 @@ impl Fat16 {
     }
 
     pub fn resolve(disk: &mut Global<Disk>) -> Result<Dyn<dyn FileSystem>, FSError> {
-        let (id, sector_size, header) = disk.with_rlock(|disk| -> (u32, usize, FatH) {
-            (disk.id, disk.sector_size, disk.stream().read_new::<FatH>())
-        });
+        let (id, header) =
+            disk.with_rlock(|disk| -> (u32, FatH) { (disk.id, disk.stream().read_new::<FatH>()) });
 
         if header.extended_header.signature != FAT16_SIGNATURE {
             return Err(FSError::NotOurFS);

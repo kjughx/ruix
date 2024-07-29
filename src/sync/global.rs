@@ -1,7 +1,6 @@
 use core::{
     cell::UnsafeCell,
     ops::{Deref, DerefMut},
-    ptr::addr_of,
 };
 
 use super::lock::RWLock;
@@ -26,11 +25,14 @@ impl<T, F: FnOnce() -> T> Global<T, F> {
         }
     }
 
+    /// # Safety
+    ///  Unsafe because it needs circumvents the lock
     pub unsafe fn force(&mut self) -> GlobalUnlocked<'_, T, F> {
         GlobalUnlocked::new(self)
     }
 
-    /// # Safety: Unsafe because it needs manual unlock
+    /// # Safety
+    ///  Unsafe because it needs manual unlock
     pub unsafe fn wlock(&mut self) -> GlobalUnlocked<'_, T, F> {
         self.lock.wlock();
         GlobalUnlocked::new(self)
