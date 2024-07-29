@@ -7,7 +7,6 @@ use crate::{
     fs::{FileDescriptor, FileMode, FileStat, FileSystem, IOError},
     path::Path,
     sync::Global,
-    traceln,
 };
 
 use private::{FatDirectoryItem, FatH, FAT_DIRECTORY_ITEM_SIZE};
@@ -72,11 +71,6 @@ impl Fat16 {
     }
 
     fn cluster_to_sector(&self, cluster: usize) -> usize {
-        traceln!(
-            "{} {}",
-            self.root_dir.end,
-            self.header.primary_header.sectors_per_cluster
-        );
         self.root_dir.end + (cluster - 2) * self.header.primary_header.sectors_per_cluster as usize
     }
 }
@@ -163,7 +157,6 @@ impl FileDescriptor for FatFileDescriptor {
             let start_sector = fs.cluster_to_sector(self.item.first_cluster());
 
             assert!(self.pos == 0, "No support for reading twice yet");
-            traceln!("{}", disk.sector_size);
             stream.seek_sector(Sector(start_sector));
             stream.read(buf, size * count);
         });

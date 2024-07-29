@@ -45,9 +45,9 @@ gdb: dev
 	rust-gdb --command=debug.gdb
 
 .PHONY: qemu
-qemu: $(BINS)
+qemu: dev
 	qemu-system-i386 -hda bin/os.bin -serial stdio
 
 .PHONY: trace
-trace: $(BINS)
+trace: dev
 	qemu-system-i386 -hda bin/os.bin -serial stdio -display none

@@ -1,7 +1,4 @@
-use crate::{
-    heap::{alloc, free},
-    traceln,
-};
+use crate::heap::{alloc, free};
 
 use core::{
     ops::{Index, IndexMut},
@@ -18,7 +15,6 @@ pub struct Array<T> {
 
 impl<T> Array<T> {
     pub fn new(cap: usize) -> Self {
-        traceln!("Creating DynArray with {} capacity", cap);
         unsafe {
             let t_ptr =
                 core::mem::transmute::<*mut u8, *mut T>(alloc(cap * core::mem::size_of::<T>()));

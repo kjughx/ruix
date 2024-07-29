@@ -1,7 +1,4 @@
-use crate::{
-    heap::{alloc, free},
-    traceln,
-};
+use crate::heap::{alloc, free};
 
 use core::{
     marker::Unsize,
@@ -24,7 +21,6 @@ impl<T> Dyn<T> {
     }
 
     pub fn drop(self) {
-        traceln!("Dropping Dyn");
         free::<T>(self.0.as_ptr())
     }
 }

@@ -1,4 +1,4 @@
-use crate::{boxed::Array, disk::Stream, traceln};
+use crate::{boxed::Array, disk::Stream};
 use core::mem;
 
 use super::private::{FatDirectoryItem, FAT_DIRECTORY_ITEM_SIZE};
