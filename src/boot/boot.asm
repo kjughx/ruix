@@ -8,7 +8,7 @@ jmp short step1
 nop
 
 ; FAT16 Header
-OEMIdentifier     db 'PHIX    ' ; 8 bytes
+OEMIdentifier     db "RUIX    " ; 8 bytes
 BytesPerSector    dw 0x200      ; 512 Bytes per sector
 SectorsPerCluster db 0x80       ; 128 Sectors
 ReservedSectors   dw 200        ; Reserved for kernel (200 * 512 = 100KB)
@@ -27,8 +27,8 @@ DriveNumber       db 0x80
 WinNTBit          db 0x00
 Signature         db 0x29
 VolumeID          dd 0xD105
-VolumeIDString    db 'PHIX   BOOT' ; 11 Bytes
-SystemIDString    db 'FAT16   '
+VolumeIDString    db "RUIX   BOOT" ; 11 Bytes
+SystemIDString    db "FAT16   "
 
 step1:
     jmp 0:step2
@@ -36,9 +36,8 @@ step1:
 step2:
     cli ; Disable interrupts
     mov ax, 0x00
-    mov ds, ax
-    mov es, ax
-    mov ss, ax
+    call flush_gdt
+
     mov sp, 0x7c00
 
 .load_protected:
@@ -47,6 +46,16 @@ step2:
     or eax, 0x1
     mov cr0, eax
     jmp CODE_SEG:load32
+
+
+; NOTE: expects segment value in ax
+flush_gdt:
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+    mov fs, ax
+    mov gs, ax
+    ret
 
 gdt_start:
 gdt_null:
@@ -79,8 +88,12 @@ gdt_descriptor:
 
 [BITS 32]
 load32:
+    ; Flush the GDT
+    mov ax, 0x10
+    call flush_gdt
+
     mov eax, 1
-    mov ecx, 200
+    mov ecx, 250
     mov edi, 0x0100000
     call ata_lba_read
     jmp CODE_SEG:0x0100000
