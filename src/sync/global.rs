@@ -1,11 +1,12 @@
 use core::{
     cell::UnsafeCell,
     ops::{Deref, DerefMut},
+    ptr::addr_of,
 };
 
 use super::lock::RWLock;
 
-enum State<T, F> {
+enum State<T, F = fn() -> T> {
     Uninit(F),
     Init(T),
     Poisoned,
@@ -117,13 +118,6 @@ impl<'a, T: 'a, F: FnOnce() -> T> GlobalUnlocked<'a, T, F> {
         unsafe { this.global.data.get().write(State::Init(data)) };
     }
 }
-
-// impl<'a, T: 'a, F: FnOnce() -> T> Drop for GlobalUnlocked<'a, T, F> {
-//     fn drop(&mut self) {
-//         if self.global.lock
-//         self.global.lock.wunlock();
-//     }
-// }
 
 impl<'a, T: 'a, F: FnOnce() -> T> Deref for GlobalUnlocked<'a, T, F> {
     type Target = T;
