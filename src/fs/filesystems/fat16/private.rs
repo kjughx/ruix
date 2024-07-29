@@ -42,8 +42,9 @@ impl FatH {
     pub fn root(&self) -> usize {
         let primary_header = self.primary_header;
 
-        primary_header.fat_copies as usize * primary_header.sectors_per_fat as usize
-            + primary_header.reserved_sectors as usize
+        (primary_header.fat_copies as usize * primary_header.sectors_per_fat as usize
+            + primary_header.reserved_sectors as usize)
+            * 512
     }
 }
 
@@ -107,7 +108,7 @@ impl FatDirectoryItem {
             }
         }
 
-        stream.seek(pos);
+        stream.seek(&pos);
         count
     }
 }

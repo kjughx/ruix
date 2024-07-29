@@ -2,6 +2,7 @@ use crate::{boxed::Array, disk::Stream, traceln};
 use core::mem;
 
 use super::private::{FatDirectoryItem, FAT_DIRECTORY_ITEM_SIZE};
+use crate::disk::{Offset, Sector};
 
 pub(super) const FAT16_SIGNATURE: u8 = 0x29;
 const _FAT16_ENTRY_SIZE: u16 = 0x02;
@@ -19,17 +20,17 @@ const _FAT_FILE_RESERVERED: u8 = 1 << 7;
 
 pub(super) struct FatDirectory {
     items: Array<FatDirectoryItem>,
-    pub _total: u32,
-    pub _start: usize,
+    pub total: u32,
+    pub start: usize,
     pub end: usize,
 }
 
 impl FatDirectory {
-    pub fn new(stream: &mut dyn Stream, start: usize, count: usize) -> Self {
-        stream.seek(start);
+    pub fn new(stream: &mut dyn Stream, start: Offset, entries: usize) -> Self {
+        stream.seek(&start);
         let total = Self::get_total_items(stream);
 
-        let mut items = Array::new(count);
+        let mut items = Array::new(entries);
         for i in 0..total as isize {
             let item = FatDirectoryItem::new(stream);
             items[i] = item;
@@ -37,12 +38,13 @@ impl FatDirectory {
 
         Self {
             items,
-            _total: total,
-            _start: start,
-            end: start + count * FAT_DIRECTORY_ITEM_SIZE,
+            total,
+            start: start.0 / stream.sector_size(),
+            end: (start.0 + entries * FAT_DIRECTORY_ITEM_SIZE) / stream.sector_size(),
         }
     }
 
+    /// This leaves @stream intact
     fn get_total_items(stream: &mut dyn Stream) -> u32 {
         let pos = stream.pos(); // We have to rewind when done
 
@@ -58,14 +60,12 @@ impl FatDirectory {
             }
         }
 
-        stream.seek(pos);
+        stream.seek(&pos);
         count
     }
 
     pub fn find(&self, stream: &mut dyn Stream, name: &str) -> Option<FatItem> {
-        traceln!();
         for item in self.items.into_iter() {
-            traceln!("{}", item.filename());
             if item.filename() == name {
                 return Some(FatItem::new(stream, item));
             }
@@ -84,8 +84,9 @@ impl FatItem {
     pub fn new(stream: &mut dyn Stream, item: &FatDirectoryItem) -> Self {
         match item.attributes {
             FAT_FILE_SUBDIRECTORY => {
-                let size = FatDirectoryItem::size(stream);
-                FatItem::Directory(FatDirectory::new(stream, item.first_cluster(), size))
+                // let size = FatDirectoryItem::size(stream);
+                // FatItem::Directory(FatDirectory::new(stream, item.first_cluster(), size))
+                todo!()
             }
             _ => FatItem::File(*item),
         }

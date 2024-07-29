@@ -9,6 +9,9 @@ use crate::{
     sync::Global,
 };
 
+pub struct Sector(pub usize);
+pub struct Offset(pub usize);
+
 const SECTOR_SIZE: usize = 512;
 
 #[derive(Debug)]
@@ -53,8 +56,8 @@ impl Disk {
         self.filesystem = Some(fs)
     }
 
-    pub fn seek(&mut self, pos: usize) {
-        self.pos = pos;
+    pub fn seek(&mut self, pos: Offset) {
+        self.pos = pos.0;
     }
 
     pub fn stream(&self) -> Streamer {
@@ -69,13 +72,14 @@ global! {
 }
 
 pub trait Stream {
-    fn seek(&mut self, pos: usize);
-    fn seek_sector(&mut self, pos: usize);
-    fn pos(&self) -> usize;
+    fn seek(&mut self, pos: &Offset);
+    fn seek_sector(&mut self, pos: Sector);
+    fn pos(&self) -> Offset;
     fn read(&mut self, buf: &mut [u8], total: usize);
     fn write(&mut self) {
         todo!();
     }
+    fn sector_size(&self) -> usize;
 }
 
 pub struct Streamer<'a> {
@@ -84,16 +88,16 @@ pub struct Streamer<'a> {
 }
 
 impl Stream for Streamer<'_> {
-    fn seek(&mut self, pos: usize) {
-        self.pos = pos
+    fn seek(&mut self, pos: &Offset) {
+        self.pos = pos.0
     }
 
-    fn seek_sector(&mut self, sector: usize) {
-        self.pos = sector * self.disk.sector_size;
+    fn seek_sector(&mut self, sector: Sector) {
+        self.pos = sector.0 * self.disk.sector_size;
     }
 
-    fn pos(&self) -> usize {
-        self.pos
+    fn pos(&self) -> Offset {
+        Offset(self.pos)
     }
 
     fn read(&mut self, buf: &mut [u8], total: usize) {
@@ -119,12 +123,17 @@ impl Stream for Streamer<'_> {
             bytes_read += bytes_to_read;
         }
     }
+
+    fn sector_size(&self) -> usize {
+        self.disk.sector_size
+    }
 }
 
 impl<'a> Streamer<'a> {
     pub fn new(disk: &'a Disk) -> Self {
         Self { pos: 0, disk }
     }
+
     fn read_sector(&self, lba: u32, buf: &mut [u8; SECTOR_SIZE]) {
         outb(0x1F6, ((lba >> 24) | 0xE0) as u8);
         outb(0x1F2, 1);
@@ -142,6 +151,7 @@ impl<'a> Streamer<'a> {
             buf[2 * i + 1] = (val >> 8) as u8;
         }
     }
+
     pub fn read_new<T: FromBytes<Output = T> + Sized>(&mut self) -> T {
         let size = core::mem::size_of::<T>();
 

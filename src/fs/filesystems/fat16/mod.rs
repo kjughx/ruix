@@ -3,7 +3,7 @@ mod private;
 
 use crate::{
     boxed::{Box, Dyn},
-    disk::{Disk, Stream},
+    disk::{Disk, Offset, Sector, Stream},
     fs::{FileDescriptor, FileMode, FileSystem, IOError},
     path::Path,
     sync::Global,
@@ -38,11 +38,13 @@ impl Fat16 {
         }
 
         let root_start = header.root();
-        let size =
-            header.primary_header.root_dir_entries as usize * FAT_DIRECTORY_ITEM_SIZE / sector_size;
 
-        let root_dir = disk.with_wlock(|disk| -> FatDirectory {
-            FatDirectory::new(&mut disk.stream(), root_start, size)
+        let root_dir = disk.with_rlock(|disk| -> FatDirectory {
+            FatDirectory::new(
+                &mut disk.stream(),
+                Offset(root_start),
+                header.primary_header.root_dir_entries as usize,
+            )
         });
 
         Ok(Dyn::new(Self::new(id, header, root_dir)))
@@ -58,17 +60,15 @@ impl Fat16 {
         let root = self.root();
         let part = iter.next()?;
 
-        {
-            let mut current = root.find(stream, part)?;
+        let mut current = root.find(stream, part)?;
 
-            for next in iter {
-                match current {
-                    FatItem::Directory(ref dir) => current = dir.find(stream, next)?,
-                    FatItem::File(_) => return None,
-                }
+        for next in iter {
+            match current {
+                FatItem::Directory(ref dir) => current = dir.find(stream, next)?,
+                FatItem::File(_) => return None,
             }
-            Some(current)
         }
+        Some(current)
     }
 
     fn cluster_to_sector(&self, cluster: usize) -> usize {
@@ -152,18 +152,19 @@ impl FileDescriptor for FatFileDescriptor {
         Disk::get_mut(self.disk_id).with_rlock(|disk| {
             let mut stream = disk.stream();
 
-            let start_sector = disk
+            let fs = disk
                 .filesystem
                 .as_ref()
                 .unwrap()
                 .as_any()
                 .downcast_ref::<Fat16>()
-                .unwrap()
-                .cluster_to_sector(self.item.first_cluster());
+                .expect("A FAT16 filesystem");
+
+            let start_sector = fs.cluster_to_sector(self.item.first_cluster());
 
             assert!(self.pos == 0, "No support for reading twice yet");
             traceln!("{}", disk.sector_size);
-            stream.seek_sector(start_sector);
+            stream.seek_sector(Sector(start_sector));
             stream.read(buf, size * count);
         });
 
