@@ -2,6 +2,7 @@
 #![no_main]
 
 use ruix::{
+    cpu,
     disk::Disk,
     fs::Vfs,
     gdt::GDT,
@@ -14,7 +15,7 @@ use ruix::{
 };
 
 #[no_mangle]
-extern "C" fn kmain() -> ! {
+extern "C" fn kmain() {
     Terminal::init();
 
     GDT::load();
@@ -30,12 +31,7 @@ extern "C" fn kmain() -> ! {
 
     KernelPage::switch();
     Paging::enable();
-    Process::new("0:/blank");
 
     println!("Hello, World!");
     traceln!("Hello, World!");
-
-    loop {
-        unsafe { core::arch::asm!("hlt") };
-    }
 }

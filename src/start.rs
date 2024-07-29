@@ -2,16 +2,13 @@ use crate::__trace;
 use core::arch::asm;
 
 #[no_mangle]
-pub static DATA_SEG: u32 = 0x10;
-
-#[no_mangle]
 #[naked]
 #[link_section = ".start"]
 extern "C" fn _start() -> ! {
     unsafe {
         asm!(
             ".code32",
-            "mov ax, DATA_SEG",
+            "mov ax, 0x10", // Data segment is at offset 0x10
             "mov ds, ax",
             "mov es, ax",
             "mov fs, ax",
@@ -29,7 +26,9 @@ extern "C" fn _start() -> ! {
             "mov al, 00000001b",
             "out 0x21, al",
             "call kmain",
+            "42:",
             "hlt",
+            "jmp 42b",
             options(noreturn)
         );
     }
