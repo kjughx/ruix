@@ -1,7 +1,8 @@
 use crate::heap::{alloc, free};
 
 use core::{
-    ops::{Index, IndexMut},
+    marker::PhantomData,
+    ops::{Deref, DerefMut, Index},
     ptr::Unique,
     slice::IterMut,
 };
@@ -11,6 +12,7 @@ use core::{
 pub struct Array<T> {
     data: Unique<T>,
     cap: usize,
+    _marker: PhantomData<[T]>,
 }
 
 impl<T> Array<T> {
@@ -24,6 +26,7 @@ impl<T> Array<T> {
             Self {
                 data: Unique::new_unchecked(t_ptr),
                 cap,
+                _marker: PhantomData,
             }
         }
     }
@@ -53,16 +56,16 @@ impl<T> Array<T> {
     }
 }
 
-impl<T> Index<usize> for Array<T> {
-    type Output = T;
-    fn index(&self, index: usize) -> &Self::Output {
-        unsafe { self.data.as_ptr().add(index).as_ref().unwrap() }
+impl<T> Deref for Array<T> {
+    type Target = [T];
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*core::ptr::slice_from_raw_parts(self.data.as_ptr(), self.cap) }
     }
 }
 
-impl<T> IndexMut<usize> for Array<T> {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        unsafe { self.data.as_ptr().add(index).as_mut().unwrap() }
+impl<T> DerefMut for Array<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { &mut *core::ptr::slice_from_raw_parts(self.data.as_ptr(), self.cap).cast_mut() }
     }
 }
 

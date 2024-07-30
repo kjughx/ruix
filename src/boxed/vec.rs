@@ -1,7 +1,8 @@
 use crate::heap::{alloc, free, realloc};
 
 use core::{
-    ops::{Index, IndexMut},
+    marker::PhantomData,
+    ops::{Deref, DerefMut, Index, IndexMut},
     ptr::Unique,
 };
 
@@ -11,6 +12,7 @@ pub struct Vec<T: Sized> {
     data: Unique<T>,
     cap: usize,
     len: isize,
+    _marker: PhantomData<[T]>,
 }
 
 pub struct VecIter<'a, T> {
@@ -43,6 +45,7 @@ impl<T: Copy> Vec<T> {
                 data: Unique::new_unchecked(t_ptr),
                 cap: DEFAULT_VEC_CAP,
                 len: 0,
+                _marker: PhantomData,
             }
         }
     }
@@ -56,6 +59,7 @@ impl<T: Copy> Vec<T> {
                 data: Unique::new_unchecked(t_ptr),
                 cap,
                 len: 0,
+                _marker: PhantomData,
             }
         }
     }
@@ -110,6 +114,19 @@ impl<T: Copy> Vec<T> {
                 .as_mut()
                 .unwrap()
         }
+    }
+}
+
+impl<T> Deref for Vec<T> {
+    type Target = [T];
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*core::ptr::slice_from_raw_parts(self.data.as_ptr(), self.cap) }
+    }
+}
+
+impl<T> DerefMut for Vec<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { &mut *core::ptr::slice_from_raw_parts(self.data.as_ptr(), self.cap).cast_mut() }
     }
 }
 
