@@ -1,5 +1,5 @@
 use crate::{
-    boxed::Box,
+    boxed::{Array, Box},
     disk::{Disk, Stream},
     path::Path,
     sync::Global,
@@ -51,14 +51,15 @@ pub trait FileSystem {
     fn read(&self, fd: Box<dyn FileDescriptor>);
     fn seek(&self);
     fn close(&self);
-    fn name(&self) -> &str;
+    fn name(&self) -> &'static str;
     fn as_any(&self) -> &dyn Any;
 }
 
 pub trait FileDescriptor {
-    fn read(&self, size: usize, count: usize, buf: &mut [u8]) -> Result<(), IOError>;
+    fn read(&self, size: usize) -> Result<Array<u8>, IOError>;
+    fn read_all(&self) -> Result<Array<u8>, IOError>;
     fn write(&mut self, size: usize, count: usize, buf: &[u8]) -> Result<(), IOError>;
-    fn seek(&mut self, offset: isize, whence: SeekMode);
+    fn seek(&self, offset: isize, whence: SeekMode);
     fn stat(&self) -> FileStat;
     fn as_any(&self) -> &dyn Any;
 }

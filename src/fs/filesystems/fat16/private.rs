@@ -1,8 +1,5 @@
 use crate::disk::Stream;
-use crate::{
-    packed::{packed, Packed},
-    FromBytes,
-};
+use crate::packed::{packed, Packed};
 
 #[packed]
 pub struct FatHeaderExt {
@@ -50,13 +47,6 @@ impl FatH {
 
 pub const _FAT_HEADER_SIZE: usize = core::mem::size_of::<FatH>();
 
-impl FromBytes for FatH {
-    type Output = FatH;
-    fn from_bytes(bytes: &[u8]) -> Self::Output {
-        unsafe { *(bytes.as_ptr() as *const FatH) }
-    }
-}
-
 #[packed]
 pub struct FatDirectoryItem {
     pub filename: [u8; 8],
@@ -91,25 +81,6 @@ impl FatDirectoryItem {
 
     pub fn extension(&self) -> &str {
         core::str::from_utf8(&self.extension).unwrap_or("").trim()
-    }
-
-    pub fn size(stream: &mut dyn Stream) -> usize {
-        let pos = stream.pos(); // We have to rewind when done
-
-        const SIZE: usize = core::mem::size_of::<FatDirectoryItem>();
-        let mut buf: [u8; SIZE] = [0; SIZE];
-        let mut count = 0;
-        loop {
-            stream.read(&mut buf, SIZE);
-            match buf[0] {
-                0 => break,
-                0xE5 => continue,
-                _ => count += 1,
-            }
-        }
-
-        stream.seek(&pos);
-        count
     }
 }
 

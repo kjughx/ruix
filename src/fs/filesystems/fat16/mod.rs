@@ -1,13 +1,13 @@
 mod r#impl;
 mod private;
-
 use crate::{
-    boxed::{Box, Dyn},
+    boxed::{Array, Box, Dyn},
     disk::{Disk, Offset, Sector, Stream},
     fs::{FileDescriptor, FileMode, FileStat, FileSystem, IOError},
     path::Path,
     sync::Global,
 };
+use core::cell::Cell;
 
 use private::{FatDirectoryItem, FatH};
 use r#impl::{FatDirectory, FatItem, FAT16_SIGNATURE};
@@ -104,8 +104,8 @@ impl FileSystem for Fat16 {
         todo!()
     }
 
-    fn name(&self) -> &str {
-        todo!()
+    fn name(&self) -> &'static str {
+        "FAT16"
     }
 
     fn close(&self) {
@@ -120,7 +120,7 @@ impl FileSystem for Fat16 {
 pub struct FatFileDescriptor {
     item: FatDirectoryItem,
     disk_id: u32,
-    pos: usize,
+    pos: Cell<usize>,
     mode: FileMode,
 }
 
@@ -129,7 +129,7 @@ impl FatFileDescriptor {
         Self {
             disk_id,
             item,
-            pos: 0,
+            pos: Cell::new(0),
             mode,
         }
     }
@@ -137,10 +137,40 @@ impl FatFileDescriptor {
 
 use crate::fs::{FSError, SeekMode};
 impl FileDescriptor for FatFileDescriptor {
-    fn read(&self, size: usize, count: usize, buf: &mut [u8]) -> Result<(), IOError> {
-        if buf.len() < size * count {
+    fn read(&self, size: usize) -> Result<Array<u8>, IOError> {
+        if size > self.stat().size {
             return Err(IOError::InvalidArgument);
         }
+
+        let mut buf = Array::new(size);
+
+        Disk::get_mut(self.disk_id).with_rlock(|disk| {
+            let mut stream = disk.stream();
+
+            if self.pos.get() == 0 {
+                let fs = disk
+                    .filesystem
+                    .as_ref()
+                    .unwrap()
+                    .as_any()
+                    .downcast_ref::<Fat16>()
+                    .expect("A FAT16 filesystem");
+
+                let start_sector = fs.cluster_to_sector(self.item.first_cluster());
+                stream.seek_sector(Sector(start_sector));
+            }
+
+            stream.seek(Offset(self.pos.get()));
+            stream.read(&mut buf, size);
+            self.pos.set(stream.pos().0);
+        });
+
+        Ok(buf)
+    }
+
+    fn read_all(&self) -> Result<Array<u8>, IOError> {
+        let size = self.stat().size;
+        let mut buf = Array::new(size);
 
         Disk::get_mut(self.disk_id).with_rlock(|disk| {
             let mut stream = disk.stream();
@@ -155,23 +185,24 @@ impl FileDescriptor for FatFileDescriptor {
 
             let start_sector = fs.cluster_to_sector(self.item.first_cluster());
 
-            assert!(self.pos == 0, "No support for reading twice yet");
             stream.seek_sector(Sector(start_sector));
-            stream.read(buf, size * count);
+            stream.read(&mut buf, size);
         });
 
-        Ok(())
+        Ok(buf)
     }
 
     fn write(&mut self, _size: usize, _count: usize, _buf: &[u8]) -> Result<(), IOError> {
         todo!()
     }
 
-    fn seek(&mut self, offset: isize, whence: SeekMode) {
+    fn seek(&self, offset: isize, whence: SeekMode) {
         match whence {
-            SeekMode::CurrentPosition => self.pos = (self.pos as isize + offset) as usize,
-            SeekMode::EndOfFile => self.pos = (self.item.filesize as isize - offset) as usize,
-            SeekMode::StartOfFile => self.pos = offset as usize,
+            SeekMode::CurrentPosition => self.pos.set((self.pos.get() as isize + offset) as usize),
+            SeekMode::EndOfFile => self
+                .pos
+                .set((self.item.filesize as isize - offset) as usize),
+            SeekMode::StartOfFile => self.pos.set(offset as usize),
         }
     }
 

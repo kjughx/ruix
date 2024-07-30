@@ -9,7 +9,9 @@ use crate::{
     sync::Global,
 };
 
+#[derive(Clone, Copy)]
 pub struct Sector(pub usize);
+#[derive(Clone, Copy)]
 pub struct Offset(pub usize);
 
 const SECTOR_SIZE: usize = 512;
@@ -72,7 +74,7 @@ global! {
 }
 
 pub trait Stream {
-    fn seek(&mut self, pos: &Offset);
+    fn seek(&mut self, pos: Offset);
     fn seek_sector(&mut self, pos: Sector);
     fn pos(&self) -> Offset;
     fn read(&mut self, buf: &mut [u8], total: usize);
@@ -88,8 +90,8 @@ pub struct Streamer<'a> {
 }
 
 impl Stream for Streamer<'_> {
-    fn seek(&mut self, pos: &Offset) {
-        self.pos = pos.0
+    fn seek(&mut self, pos: Offset) {
+        self.pos = pos.0;
     }
 
     fn seek_sector(&mut self, sector: Sector) {

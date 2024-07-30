@@ -27,7 +27,7 @@ pub(super) struct FatDirectory {
 
 impl FatDirectory {
     pub fn new(stream: &mut dyn Stream, start: Offset, entries: usize) -> Self {
-        stream.seek(&start);
+        stream.seek(start);
         let total = Self::get_total_items(stream);
 
         let mut items = Array::new(entries);
@@ -60,7 +60,7 @@ impl FatDirectory {
             }
         }
 
-        stream.seek(&pos);
+        stream.seek(pos);
         count
     }
 
@@ -81,7 +81,7 @@ pub(super) enum FatItem {
 }
 
 impl FatItem {
-    pub fn new(stream: &mut dyn Stream, item: &FatDirectoryItem) -> Self {
+    pub fn new(_stream: &mut dyn Stream, item: &FatDirectoryItem) -> Self {
         match item.attributes {
             FAT_FILE_SUBDIRECTORY => {
                 // let size = FatDirectoryItem::size(stream);
