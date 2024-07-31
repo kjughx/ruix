@@ -27,6 +27,7 @@ impl Registers {
             eax: 0,
             unused: 0,
 
+            errno: 0,
             ip: PROGRAM_VIRTUAL_ADDRESS,
             cs: USER_CODE_SEGMENT,
             flags: 0,
@@ -79,12 +80,11 @@ pub struct CPU;
 impl CPU {
     pub fn return_to_task(task: &Task) {
         Paging::switch(&task.page_directory);
-        let registers = &task.registers as *const Registers;
+        let registers = &task.registers;
         unsafe { Self::_user_return(registers) };
     }
 
-    #[naked]
-    unsafe extern "C" fn _user_return(regs: *const Registers) {
+    unsafe extern "C" fn _user_return(regs: &Registers) {
         asm!(
             r#"
             mov ebp, esp
@@ -94,41 +94,41 @@ impl CPU {
             // PUSH THE CODE SEGMENT
             // PUSH IP
 
-            // Let's access the structure passed to us
-            mov ebx, [ebp+4]
             // push the data/stack selector
-            push dword ptr [ebx+0x30]
+            push ebx
             // Push the stack pointer
-            push dword ptr [ebx+0x2c]
+            push ecx
 
             // Push the flags
             // We need to set the IF (Interrupt Enable flag) otherwise the user process might never yield
             pushfd
-            pop eax
-            or eax, 0x200
-            push eax
+            pop ecx
+            or ecx, 0x200
+            push ecx
 
             // Push the code segment
-            push dword ptr [ebx+0x24]
+            push edx
 
             // Push the IP to execute
-            push dword ptr [ebx+0x20]
+            push edi
 
             // Setup some segment registers
-            mov ax, [ebx+0x30]
-            mov ds, ax
-            mov es, ax
-            mov fs, ax
-            mov gs, ax
+            mov ds, ebx
+            mov es, ebx
+            mov fs, ebx
+            mov gs, ebx
 
-            push dword ptr [ebp+4]
+            // Push the @regs
+            push eax
             call {}
             add esp, 4
 
             // Let's leave kernel land and execute in user land!
             iretd
 
-            "#, sym Registers::restore,
+            "#,
+            sym Registers::restore,
+            in("ebx") regs.ss, in("ecx") regs.sp, in("edx") regs.cs, in("edi") regs.ip, in("eax") regs as *const Registers,
             options(noreturn)
         )
     }
@@ -144,11 +144,18 @@ pub struct InterruptFrame {
     pub edx: usize,
     pub ecx: usize,
     pub eax: usize,
+    pub errno: usize,
     pub ip: usize,
     pub cs: usize,
     pub flags: usize,
     pub sp: usize,
     pub ss: usize,
+}
+
+impl InterruptFrame {
+    pub fn errno(&self) -> usize {
+        self.errno
+    }
 }
 
 impl Display for InterruptFrame {

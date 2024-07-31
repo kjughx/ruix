@@ -2,6 +2,8 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, LitInt};
 
+const ERROR_CODE_EXCEPTIONS: [u8; 10] = [0x8, 0xa, 0xb, 0xc, 0xd, 0xe, 0x11, 0x15, 0x1d, 0x1e];
+
 /// This generates:
 /// ```
 /// static INTERRUPT_POINTER_TABLE: [unsafe extern "C" fn(); #num_interrupts];
@@ -14,7 +16,7 @@ use syn::{parse_macro_input, LitInt};
 #[proc_macro]
 pub fn interrupt_table(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as LitInt);
-    let num_interrupts = input.base10_parse::<usize>().unwrap();
+    let num_interrupts = input.base10_parse::<u8>().unwrap();
 
     let mut interrupt_fns = Vec::new();
     let mut interrupt_entries = Vec::new();
@@ -22,6 +24,12 @@ pub fn interrupt_table(input: TokenStream) -> TokenStream {
     for i in 0..num_interrupts {
         let fn_name = syn::Ident::new(&format!("int{}", i), proc_macro2::Span::call_site());
         let i_str = i.to_string();
+        let in_error_code_ins = if ERROR_CODE_EXCEPTIONS.contains(&i) {
+            "nop"
+        } else {
+            "push 0" // We need to add a dummy error code
+        };
+
         interrupt_fns.push(quote! {
             #[naked]
             #[no_mangle]
@@ -29,16 +37,17 @@ pub fn interrupt_table(input: TokenStream) -> TokenStream {
                 unsafe {
                     core::arch::asm!(
                         // CPU does:
-                        // push ip
-                        // push cs
-                        // push flags
-                        // push sp
                         // push ss
+                        // push sp
+                        // push flags
+                        // push cs
+                        // push ip
+                        #in_error_code_ins,
                         "pushad", // Push general purpose registers
                         "push esp",
                         concat!("push ", #i_str),
                         "call interrupt_handler",
-                        "add esp, 8", // Pop the stack
+                        "add esp, 12", // Pop the stack, along with the error code
                         "popad", // Restore general purpose registers
                         "iretd", // Return from interrupt
                         options(noreturn)
@@ -53,11 +62,15 @@ pub fn interrupt_table(input: TokenStream) -> TokenStream {
     }
 
     let expanded = quote! {
+        extern "C" {
+            fn handle_error_code();
+        }
+
         #(#interrupt_fns)*
 
         #[link_section = ".data"]
         #[no_mangle]
-        static INTERRUPT_POINTER_TABLE: [unsafe extern "C" fn(); #num_interrupts] = [
+        static INTERRUPT_POINTER_TABLE: [unsafe extern "C" fn(); #num_interrupts as usize] = [
             #(#interrupt_entries)*
         ];
     };
