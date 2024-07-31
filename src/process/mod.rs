@@ -1,6 +1,11 @@
+use core::marker::PhantomData;
+
+use crate::boxed::Array;
 use crate::fs::{FileMode, Vfs};
 use crate::heap::alloc;
-use crate::paging::Addr;
+use crate::loader;
+use crate::loader::elf::Elf;
+use crate::paging::{Addr, PAGE_SIZE};
 use crate::paging::{PAGE_ACCESS_ALL, PAGE_IS_PRESENT, PAGE_IS_WRITABLE};
 use crate::path::Path;
 use crate::string::Str;
@@ -17,12 +22,14 @@ static mut PROCESSES: Global<[Option<Shared<Process>>; MAX_PROCESSES]> =
 
 #[derive(Debug)]
 pub enum ProcessError {
+    InvalidFormat,
     Other,
 }
 
 // Pointer to the data and its size
 enum ProcessData {
-    Binary(*const u8, usize),
+    Binary(Array<u8>),
+    Elf(Elf),
 }
 
 pub struct Processes;
@@ -67,12 +74,83 @@ pub struct Process {
     pub task: Task,
     // TODO: Track allocations
     data: ProcessData,
+    bss: *const (),
     stack: *const (),
+    _marker: PhantomData<[u8]>,
 }
 
 impl Process {
     pub fn new(filename: &str) -> Result<Process, ProcessError> {
-        Self::new_binary(filename)
+        match Self::new_elf(filename) {
+            Err(ProcessError::InvalidFormat) => Self::new_binary(filename),
+            a => a,
+        }
+    }
+
+    fn new_elf(filename: &str) -> Result<Process, ProcessError> {
+        // No races for this
+        unsafe { PROCESSES.wlock() };
+        let id = unsafe { Processes::find_slot().expect("Available slots") };
+
+        let elf = match Elf::load(filename) {
+            Err(loader::Error::BadFormat) => return Err(ProcessError::InvalidFormat),
+            a => a.unwrap(),
+        };
+
+        let stack = alloc(USER_STACK_SIZE);
+        let mut task = Task::new(Weak::new(), Some(elf.entry_point()));
+
+        // Map the memory
+        let bss = {
+            let mut bss: *const u8 = core::ptr::null();
+            let directory = &mut task.page_directory;
+            for pheader in &elf.pheaders() {
+                let flags = {
+                    let mut f = PAGE_IS_PRESENT | PAGE_ACCESS_ALL;
+                    if pheader.is_writable() {
+                        f |= PAGE_IS_WRITABLE;
+                    }
+                    f
+                };
+
+                if pheader.vaddr() % PAGE_SIZE != 0 {
+                    continue;
+                }
+
+                // BSS Section
+                if pheader.filesz() == 0 && pheader.memsz() > 0 {
+                    assert!(bss.is_null(), "Many BSS sections? :O");
+                    bss = alloc(pheader.memsz());
+                }
+
+                directory.map_range(
+                    Addr(pheader.vaddr()).align_lower(),
+                    Addr(pheader.paddr()).align_lower(),
+                    Addr(pheader.paddr() + pheader.memsz()).align_upper(),
+                    flags,
+                )
+            }
+
+            // Stack
+            directory.map_range(
+                Addr(USER_STACK_END),
+                Addr(stack as usize),
+                Addr(stack as usize + USER_STACK_SIZE).align_upper(),
+                PAGE_IS_PRESENT | PAGE_ACCESS_ALL | PAGE_IS_WRITABLE,
+            );
+
+            bss
+        };
+
+        Ok(Self {
+            id: id as u16,
+            filename: Str::from(filename),
+            task,
+            data: ProcessData::Elf(elf),
+            bss: bss as *const (),
+            stack,
+            _marker: PhantomData,
+        })
     }
 
     fn new_binary(filename: &str) -> Result<Process, ProcessError> {
@@ -83,25 +161,19 @@ impl Process {
         let fd = Vfs::open(Path::new(filename), FileMode::ReadOnly).unwrap();
         let size = fd.stat().size;
 
-        let program_data = unsafe {
-            let ptr = alloc(size);
-            let slice = core::ptr::slice_from_raw_parts_mut(ptr, size)
-                .as_mut()
-                .unwrap();
-            fd.read(size, 1, slice).unwrap();
-            ptr
-        };
+        let program_data = fd.read_all().unwrap();
 
         let stack = alloc(USER_STACK_SIZE);
-        let mut task = Task::new(Weak::new());
+        let mut task = Task::new(Weak::new(), None);
 
+        // Map the memory
         {
             let directory = &mut task.page_directory;
             // Code
             directory.map_range(
                 Addr(USER_VIRTUAL_START),
-                Addr(program_data as usize),
-                Addr(program_data as usize + size).align_upper(),
+                Addr(program_data.as_ptr() as usize),
+                Addr(program_data.as_ptr() as usize + size).align_upper(),
                 PAGE_IS_PRESENT | PAGE_ACCESS_ALL,
             );
 
@@ -118,8 +190,10 @@ impl Process {
             id: id as u16,
             filename: Str::from(filename),
             task,
-            data: ProcessData::Binary(program_data, size),
+            data: ProcessData::Binary(program_data),
+            bss: core::ptr::null(),
             stack,
+            _marker: PhantomData,
         })
     }
 }

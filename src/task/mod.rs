@@ -1,6 +1,7 @@
 use core::arch::asm;
 
 use crate::cpu::{InterruptFrame, Registers};
+use crate::paging::PAGE_IS_WRITABLE;
 use crate::paging::{pagedirectory::PageDirectory, Paging, PAGE_ACCESS_ALL, PAGE_IS_PRESENT};
 use crate::process::Process;
 use crate::sync::{Shared, Weak};
@@ -16,10 +17,15 @@ pub struct Task {
 }
 
 impl Task {
-    pub fn new(process: Weak<Process>) -> Self {
-        let page_directory = PageDirectory::new(PAGE_IS_PRESENT | PAGE_ACCESS_ALL);
+    pub fn new(process: Weak<Process>, entry: Option<usize>) -> Self {
+        let page_directory =
+            PageDirectory::new(PAGE_IS_PRESENT | PAGE_IS_WRITABLE | PAGE_ACCESS_ALL);
 
-        let registers = Registers::user_default();
+        let mut registers = Registers::user_default();
+        if let Some(entry) = entry {
+            registers.ip = entry;
+        }
+
         Self {
             page_directory,
             registers,
