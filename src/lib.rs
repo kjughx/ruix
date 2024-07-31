@@ -40,6 +40,7 @@ pub trait FromBytes: Packed {
 pub trait ReinterpretBytes: Packed {
     type Output;
     fn reinterpret(bytes: &[u8]) -> &Self::Output;
+    fn reinterpret_mut(bytes: &mut [u8]) -> &mut Self::Output;
 }
 
 pub enum Error {

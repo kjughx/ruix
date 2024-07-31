@@ -66,6 +66,14 @@ pub fn derive_packed(input: TokenStream) -> TokenStream {
                     &*(bytes.as_ptr() as *const Self)
                 }
             }
+
+            fn reinterpret_mut(bytes: &mut [u8]) -> &mut Self {
+                assert_eq!(bytes.len(), core::mem::size_of::<#name>(), "Incorrect byte slice length");
+
+                unsafe {
+                    &mut *(bytes.as_ptr() as *mut Self)
+                }
+            }
         }
     };
 
