@@ -11,7 +11,7 @@ use pagedirectory::PageDirectory;
 global! {
     KernelPage,
     PageDirectory,
-    PageDirectory::new(PAGE_IS_WRITABLE | PAGE_IS_PRESENT | PAGE_ACCESS_ALL),
+    PageDirectory::new(PAGE_IS_WRITABLE | PAGE_IS_PRESENT),
     "KERNEL_PAGE_DIRECTORY"
 
 }
@@ -60,7 +60,6 @@ impl Paging {
 }
 
 const ENTRIES_PER_TABLE: usize = 1024;
-const PAGE_SIZE: usize = 4096;
 
 #[derive(Clone, Copy)]
 pub struct Addr(pub usize);
@@ -82,7 +81,7 @@ impl Addr {
             return *self;
         }
 
-        Self(self.0 - (PAGE_SIZE - self.0 % PAGE_SIZE))
+        Self(self.0 - self.0 % PAGE_SIZE)
     }
 
     pub fn align_upper(&self) -> Self {
@@ -119,3 +118,4 @@ pub const PAGE_IS_WRITABLE: Flags = 1 << 1;
 pub const PAGE_ACCESS_ALL: Flags = 1 << 2;
 pub const PAGE_WRITE_THROUGH: Flags = 1 << 3;
 pub const PAGE_CACHE_DISABLED: Flags = 1 << 4;
+pub const PAGE_SIZE: usize = 4096;

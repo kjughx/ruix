@@ -1,3 +1,4 @@
+use core::marker::PhantomData;
 use core::ops::Range;
 
 use crate::heap::{alloc, free};
@@ -9,33 +10,43 @@ use super::{
 };
 
 #[derive(Clone, Copy)]
-pub struct PageDirectory(*mut PageTable);
+pub struct PageDirectory {
+    tables: *mut PageTable,
+    _marker: PhantomData<[PageTable]>,
+}
 
 impl PageDirectory {
-    pub fn new(flags: Flags) -> Self {
+    pub fn new(pte_flags: Flags) -> Self {
         let tables = alloc::<PageTable>(ENTRIES_PER_TABLE * ENTRY_SIZE);
 
         for dentry in 0..ENTRIES_PER_TABLE {
             unsafe {
                 tables.add(dentry).write(PageTable::new(
                     Offset(dentry * ENTRIES_PER_TABLE * PAGE_SIZE),
-                    flags,
+                    pte_flags,
                 ));
             }
         }
 
-        Self(tables)
+        Self {
+            tables,
+            _marker: PhantomData,
+        }
     }
 
     pub fn ptr(&self) -> *mut PageTable {
-        self.0
+        self.tables
     }
 
     pub fn inspect(&self, drange: Range<usize>, trange: Range<usize>) {
         traceln!("Page Directory");
         for i in drange {
             unsafe {
-                trace!("\n\nPage {} 0x{:x}\n\n", i, (*self.0.add(i)).0 as usize);
+                trace!(
+                    "\n\nPage {} 0x{:x}\n\n",
+                    i,
+                    (*self.tables.add(i)).entries as usize
+                );
             };
             let page = self.get_table(Page(i));
             let mut k = 0;
@@ -57,11 +68,11 @@ impl PageDirectory {
             table.free()
         }
 
-        free(self.0)
+        free(self.tables)
     }
 
     fn get_table(&self, page: Page) -> PageTable {
-        unsafe { PageTable::from_ptr(self.0.add(page.0)) }
+        unsafe { PageTable::from_ptr(self.tables.add(page.0)) }
     }
 
     fn set(&mut self, vaddr: Addr, entry: PageTableEntry) {
