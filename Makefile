@@ -2,8 +2,7 @@ SRC=src
 BIN=bin
 OBJ=build
 
-BOOT_SRCS = boot/boot.asm
-BINS=$(BIN)/boot.bin $(BIN)/kernel.bin
+BINS=$(BIN)/kernel.bin
 
 SRCS := $(shell find src -name "*.rs")
 
@@ -11,7 +10,6 @@ all: dev
 
 image: $(BINS)
 	@rm -f $(BIN)/os.bin
-	@dd status=none if=$(BIN)/boot.bin >> $(BIN)/os.bin
 	@dd status=none if=$(BIN)/kernel.bin >> $(BIN)/os.bin
 	@dd status=none if=/dev/zero bs=1024 count=1024 >> $(BIN)/os.bin
 
@@ -26,10 +24,6 @@ _release: $(SRCS)
 	@cargo build --release
 	@cp $(OBJ)/i686-unknown-none/release/kernel build/kernelfull.o
 	@objcopy --target elf32-i386 -O binary build/kernelfull.o $(BIN)/kernel.bin
-
-
-$(BIN)/boot.bin: $(SRC)/boot/boot.asm
-	nasm -f bin $< -o $@
 
 .PHONY: prelude
 prelude:

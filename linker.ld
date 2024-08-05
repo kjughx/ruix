@@ -1,10 +1,16 @@
-ENTRY(_start)
+ENTRY(_entry)
 SECTIONS
 {
+    . = 0x7c00;
+    .boot : AT(0x0) ALIGN(512) {
+        KEEP(*(.boot))
+    }
+
+    # This is loaded at 0x100000 but the binary position
+    # should be 512 bytes after the boot-sector which ends at 0x1ff
     . = 1M;
-    .start : ALIGN(4096) {
-        *(.start)
-        . = 1M + 512;
+    .start : AT(0x200) {
+        KEEP(*(.start))
     } =0
 
     .text : ALIGN(4096) {

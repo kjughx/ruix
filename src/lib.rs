@@ -11,6 +11,7 @@
 extern crate global;
 extern crate packed;
 
+mod boot;
 pub mod boxed;
 pub mod cpu;
 pub mod disk;
