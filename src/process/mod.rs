@@ -165,8 +165,8 @@ impl Process {
         process
     }
 
-    pub fn task(&self) -> Weak<Task> {
-        Shared::weak(&self.task)
+    pub fn task(&self) -> Shared<Task> {
+        self.task.clone()
     }
 
     pub fn idle() -> Shared<Process> {

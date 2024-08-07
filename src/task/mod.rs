@@ -12,7 +12,7 @@ pub mod tss;
 
 pub struct CurrentTask;
 impl CurrentTask {
-    pub fn get() -> Weak<Task> {
+    pub fn get() -> Shared<Task> {
         CurrentProcess::get().with_rlock(|current| current.task())
     }
 }
