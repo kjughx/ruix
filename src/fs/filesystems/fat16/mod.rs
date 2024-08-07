@@ -27,27 +27,6 @@ impl Fat16 {
         }
     }
 
-    pub fn resolve(disk: &mut Global<Disk>) -> Result<Dyn<dyn FileSystem>, FSError> {
-        let (id, header) =
-            disk.with_rlock(|disk| -> (u32, FatH) { (disk.id, disk.stream().read_new::<FatH>()) });
-
-        if header.extended_header.signature != FAT16_SIGNATURE {
-            return Err(FSError::NotOurFS);
-        }
-
-        let root_start = header.root();
-
-        let root_dir = disk.with_rlock(|disk| -> FatDirectory {
-            FatDirectory::new(
-                &mut disk.stream(),
-                Offset(root_start),
-                header.primary_header.root_dir_entries as usize,
-            )
-        });
-
-        Ok(Dyn::new(Self::new(id, header, root_dir)))
-    }
-
     fn root(&self) -> &FatDirectory {
         &self.root_dir
     }
@@ -75,6 +54,30 @@ impl Fat16 {
 }
 
 impl FileSystem for Fat16 {
+    fn resolve(disk: &mut Global<Disk>) -> Result<(), FSError> {
+        let (id, header) =
+            disk.with_rlock(|disk| -> (u32, FatH) { (disk.id, disk.stream().read_new::<FatH>()) });
+
+        if header.extended_header.signature != FAT16_SIGNATURE {
+            return Err(FSError::NotOurFS);
+        }
+
+        let root_start = header.root();
+
+        let root_dir = disk.with_rlock(|disk| -> FatDirectory {
+            FatDirectory::new(
+                &mut disk.stream(),
+                Offset(root_start),
+                header.primary_header.root_dir_entries as usize,
+            )
+        });
+
+        let fs = Dyn::new(Self::new(id, header, root_dir));
+        disk.with_wlock(|disk| disk.register_filesystem(fs));
+
+        Ok(())
+    }
+
     fn open(
         &self,
         stream: &mut dyn Stream,
@@ -96,20 +99,8 @@ impl FileSystem for Fat16 {
         Ok(desc)
     }
 
-    fn read(&self, _fd: Box<dyn FileDescriptor>) {
-        todo!()
-    }
-
-    fn seek(&self) {
-        todo!()
-    }
-
     fn name(&self) -> &'static str {
         "FAT16"
-    }
-
-    fn close(&self) {
-        todo!()
     }
 
     fn as_any(&self) -> &dyn core::any::Any {

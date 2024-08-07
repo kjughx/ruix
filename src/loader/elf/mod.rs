@@ -9,7 +9,7 @@ use private::{
 
 use crate::{
     boxed::Array,
-    fs::{FileMode, Vfs},
+    fs::{FileMode, VFS},
     path::Path,
     string::Str,
     traceln, FromBytes, ReinterpretBytes,
@@ -29,7 +29,7 @@ pub struct Elf {
 
 impl Elf {
     pub fn load(filename: &str) -> Result<Self, super::Error> {
-        let fd = Vfs::open(Path::new(filename), FileMode::ReadOnly).unwrap();
+        let fd = VFS::open(Path::new(filename), FileMode::ReadOnly).unwrap();
         let mut file = fd.read_all().unwrap();
         let header = Header::from_bytes(&file[..Header::size()]);
 

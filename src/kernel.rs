@@ -2,8 +2,7 @@
 #![no_main]
 
 use ruix::{
-    disk::Disk,
-    fs::Vfs,
+    fs::VFS,
     gdt::GDT,
     idt::IDT,
     paging::{KernelPage, Paging},
@@ -19,12 +18,7 @@ extern "C" fn kmain() {
 
     IDT::load();
 
-    // Resolve the connected disks
-    let disk = Disk::get_mut(0);
-    match Vfs::resolve(disk) {
-        Ok(()) => (),
-        Err(_) => println!("Could not resolve disk 0"),
-    }
+    VFS::resolve().expect("Resolve disks");
 
     KernelPage::switch();
     Paging::enable();

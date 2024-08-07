@@ -3,7 +3,7 @@ use core::marker::PhantomData;
 use global::global;
 
 use crate::boxed::Array;
-use crate::fs::{FileMode, Vfs};
+use crate::fs::{FileMode, VFS};
 use crate::heap::alloc;
 use crate::loader::elf::Elf;
 use crate::paging::{Addr, PAGE_SIZE};
@@ -246,7 +246,7 @@ impl Process {
     }
 
     fn new_binary(filename: &str) -> Result<ProcessBare, ProcessError> {
-        let fd = Vfs::open(Path::new(filename), FileMode::ReadOnly).unwrap();
+        let fd = VFS::open(Path::new(filename), FileMode::ReadOnly).unwrap();
         let size = fd.stat().size;
 
         let program_data = fd.read_all().unwrap();

@@ -42,15 +42,15 @@ pub enum SeekMode {
 }
 
 pub trait FileSystem {
+    fn resolve(disk: &mut Global<Disk>) -> Result<(), FSError>
+    where
+        Self: Sized;
     fn open(
         &self,
         stream: &mut dyn Stream,
         path: Path,
         _mode: FileMode,
     ) -> Result<Box<dyn FileDescriptor>, IOError>;
-    fn read(&self, fd: Box<dyn FileDescriptor>);
-    fn seek(&self);
-    fn close(&self);
     fn name(&self) -> &'static str;
     fn as_any(&self) -> &dyn Any;
 }
@@ -64,19 +64,11 @@ pub trait FileDescriptor {
     fn as_any(&self) -> &dyn Any;
 }
 
-pub struct Vfs;
-impl Vfs {
-    pub fn resolve(disk: &mut Global<Disk>) -> Result<(), FSError> {
-        match Fat16::resolve(disk) {
-            Ok(fs) => {
-                disk.with_wlock(|disk| disk.register_filesystem(fs));
-                return Ok(());
-            }
-            Err(FSError::NotOurFS) => (),
-            Err(e) => Err(e)?,
-        }
-
-        Err(FSError::FSNotFound)
+pub struct VFS;
+impl VFS {
+    pub fn resolve() -> Result<(), FSError> {
+        let disk0 = Disk::get_mut(0);
+        <Fat16 as FileSystem>::resolve(disk0)
     }
 
     pub fn open(path: Path, mode: FileMode) -> Result<Box<dyn FileDescriptor>, IOError> {
