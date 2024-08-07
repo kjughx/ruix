@@ -3,14 +3,15 @@ use core::marker::PhantomData;
 use global::global;
 
 use crate::boxed::Array;
+use crate::cpu::CPU;
 use crate::fs::{FileMode, VFS};
+use crate::loader;
 use crate::loader::elf::Elf;
 use crate::paging::{Addr, PAGE_SIZE};
 use crate::paging::{PAGE_ACCESS_ALL, PAGE_IS_PRESENT, PAGE_IS_WRITABLE};
 use crate::path::Path;
 use crate::sync::{Global, Shared, Weak};
 use crate::task::Task;
-use crate::{loader, traceln};
 
 const USER_STACK_SIZE: usize = 16 * 1024;
 const USER_STACK_START: usize = 0x3FF000;
@@ -165,6 +166,11 @@ impl Process {
         process
     }
 
+    pub fn exec(proc: Shared<Self>) {
+        let task = proc.with_rlock(|inner| inner.task());
+        unsafe { CPU::return_to_task(task) }
+    }
+
     pub fn task(&self) -> Shared<Task> {
         self.task.clone()
     }
@@ -250,11 +256,8 @@ impl Process {
 
         let program_data = fd.read_all().unwrap();
 
-        traceln!("{:?}", program_data.as_ptr());
-
         let mut task = Task::new(Weak::new(), None);
 
-        traceln!("{:?}", task.page_directory.ptr());
         // Map the memory
         {
             let directory = &mut task.page_directory;

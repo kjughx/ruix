@@ -2,6 +2,7 @@ use core::arch::asm;
 use core::fmt::Display;
 
 use crate::paging::Paging;
+use crate::sync::Shared;
 use crate::task::Task;
 
 use crate::packed::{packed, Packed};
@@ -78,10 +79,18 @@ impl Registers {
 
 pub struct CPU;
 impl CPU {
-    pub fn return_to_task(task: &Task) {
-        Paging::switch(&task.page_directory);
-        let registers = &task.registers;
-        unsafe { Self::_user_return(registers) };
+    /// # Safety
+    /// This function is mother of all unsafety, it switches the page directory to the one mapped by @task
+    /// and drops us back into whatever @ip the task has specified in @registers.
+    pub unsafe fn return_to_task(task: Shared<Task>) {
+        // NOTE: It's important that we copy the registers, since we need to drop
+        // the lock on the task for anyone who might need it once the task starts (read syscall)
+        let registers = task.with_rlock(|task| {
+            Paging::switch(&task.page_directory);
+            task.registers
+        });
+
+        unsafe { Self::_user_return(&registers) };
     }
 
     unsafe extern "C" fn _user_return(regs: &Registers) {
