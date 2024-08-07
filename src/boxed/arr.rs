@@ -104,3 +104,28 @@ impl<'a, T> IntoIterator for &'a mut Array<T> {
         self.as_slice_mut().iter_mut()
     }
 }
+
+impl<T: Copy> From<&[T]> for Array<T> {
+    fn from(value: &[T]) -> Self {
+        let mut arr = Self::new(value.len());
+        for (i, el) in value.iter().enumerate() {
+            arr[i] = *el;
+        }
+
+        arr
+    }
+}
+
+impl<T: Copy> FromIterator<T> for Array<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        let iter = iter.into_iter();
+        let (_, upper) = iter.size_hint();
+
+        let mut arr: Array<T> = Array::new(upper.unwrap());
+        for (i, element) in iter.into_iter().enumerate() {
+            arr[i] = element;
+        }
+
+        arr
+    }
+}
