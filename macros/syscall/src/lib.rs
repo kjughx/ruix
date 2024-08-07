@@ -46,6 +46,7 @@ pub fn syscall(attr: TokenStream, item: TokenStream) -> TokenStream {
     );
 
     let mut arg_sizes = Vec::new();
+    let arg_count = input_fn.sig.inputs.len();
 
     for arg in &input_fn.sig.inputs {
         if let syn::FnArg::Typed(pat_type) = arg {
@@ -101,6 +102,8 @@ pub fn syscall(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     } else {
         quote! {
+            const #array_name: [usize; #arg_count] = [ #(#arg_sizes),* ];
+
             #[naked]
             #[no_mangle]
             extern "C" fn #asm_syscall_name() {

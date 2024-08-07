@@ -16,6 +16,12 @@ impl CurrentTask {
     pub fn get() -> Shared<Task> {
         CurrentProcess::get().with_rlock(|current| current.task())
     }
+
+    pub fn paging_switch() {
+        CurrentTask::get().with_rlock(|task| {
+            Paging::switch(&task.page_directory);
+        });
+    }
 }
 
 pub struct Task {
@@ -42,7 +48,6 @@ impl Task {
     }
 
     pub fn switch(task: Shared<Task>) {
-        // TODO: Change current task to @task
         task.with_rlock(|task| Paging::switch(&task.page_directory))
     }
 

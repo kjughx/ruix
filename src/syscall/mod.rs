@@ -1,15 +1,15 @@
 use crate::{
     cpu::InterruptFrame,
     io::outb,
-    paging::{KernelPage, Paging},
+    paging::KernelPage,
     syscall_macro::{syscall, syscalls},
-    task::CurrentTask,
+    task::{CurrentTask, Task},
     traceln,
 };
 use core::arch::asm;
 
-const NUM_SYSCALLS: usize = 1;
-syscalls!(1);
+const NUM_SYSCALLS: usize = 2;
+syscalls!(2);
 
 #[no_mangle]
 static mut SYSCALL_RETURN: usize = 0;
@@ -21,6 +21,7 @@ pub extern "C" fn entry_syscall() {
         asm!(
             r#"
                 cli
+                push 0
                 pushad
 
                 push esp
@@ -52,22 +53,30 @@ pub unsafe fn syscall_handler(command: usize, frame: *const InterruptFrame) -> u
     }
 
     KernelPage::switch();
+    Task::save(CurrentTask::get(), *frame);
 
     let syscall = SYSCALLS[command];
     let frame = unsafe { &*frame };
 
     let ret = syscall(frame);
 
-    CurrentTask::get().with_rlock(|task| {
-        Paging::switch(&task.page_directory);
-    });
+    CurrentTask::paging_switch();
 
     ret
 }
 
 #[syscall(0)]
-fn print(frame: &InterruptFrame) -> usize {
-    traceln!("{}", frame);
+fn print(_frame: &InterruptFrame) -> usize {
+    let int = Task::copy_stack_item::<u32>(CurrentTask::get(), 0);
+
+    traceln!("Got from userland: 0x{:x}", int);
 
     1
+}
+
+#[syscall(1)]
+fn exit(frame: &InterruptFrame) -> usize {
+    traceln!("{}", frame);
+
+    2
 }
