@@ -75,6 +75,15 @@ impl<T> Shared<T> {
         r
     }
 
+    fn lock(&self) {
+        let inner = self.inner();
+        inner.rwlock.wlock();
+    }
+    fn unlock(&self) {
+        let inner = self.inner();
+        inner.rwlock.wunlock();
+    }
+
     #[inline]
     fn from_inner(ptr: NonNull<SharedInner<T>>) -> Self {
         Self(ptr)
@@ -94,6 +103,23 @@ impl<T> Clone for Shared<T> {
     }
 }
 
+impl<T> Drop for Shared<T> {
+    fn drop(&mut self) {
+        let inner = self.inner();
+        if inner.strong.fetch_sub(1, Ordering::Release) != 1 {
+            return;
+        }
+
+        self.lock();
+
+        unsafe { core::ptr::drop_in_place(self.0.as_ptr()) }
+
+        drop(Weak(self.0));
+
+        self.unlock();
+    }
+}
+
 pub struct Weak<T>(NonNull<SharedInner<T>>);
 
 impl<T> Default for Weak<T> {
@@ -105,6 +131,21 @@ impl<T> Default for Weak<T> {
 impl<T> Weak<T> {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    fn inner(&self) -> &SharedInner<T> {
+        unsafe { self.0.as_ref() }
+    }
+
+    pub fn with_rlock<F, U>(&self, f: F) -> U
+    where
+        F: FnOnce(&T) -> U,
+    {
+        let inner = self.inner();
+        inner.rwlock.rlock();
+        let r = f(&inner.data);
+        inner.rwlock.runlock();
+        r
     }
 }
 
