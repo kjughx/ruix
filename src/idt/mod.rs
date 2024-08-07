@@ -18,6 +18,10 @@ fn interrupt_handler(i: u16, frame: *const InterruptFrame) {
     unsafe {
         traceln!("Interrupted: {}: {}", i, *frame);
     };
+
+    if i == 13 {
+        panic!("UNHANDLED PAGE FAULT");
+    }
     outb(0x20, 0x20);
 }
 
