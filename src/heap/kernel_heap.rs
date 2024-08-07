@@ -12,13 +12,13 @@ global! {
     "KERNEL_HEAP"
 }
 
-pub fn alloc<T>(size: usize) -> *mut T {
+pub fn alloc_<T>(size: usize) -> *mut T {
     let heap = KernelHeap::get_mut();
 
-    heap.with_wlock(|heap| -> *mut T { heap.alloc_blocks(Heap::align_block(size)).cast() })
+    heap.with_wlock(|heap| heap.alloc_blocks(Heap::align_block(size)).cast())
 }
 
-pub fn realloc(old: Addr, size: usize) -> Addr {
+pub fn realloc_(old: Addr, size: usize) -> Addr {
     let heap = KernelHeap::get_mut();
 
     heap.with_wlock(|heap| -> Addr {
@@ -33,7 +33,7 @@ pub fn realloc(old: Addr, size: usize) -> Addr {
     })
 }
 
-pub fn free<T: ?Sized>(ptr: *mut T) {
+pub fn free_<T: ?Sized>(ptr: *mut T) {
     let heap = KernelHeap::get_mut();
 
     heap.with_wlock(|heap| {

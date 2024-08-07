@@ -1,7 +1,6 @@
 use core::marker::PhantomData;
 
 use super::{Addr, Flags, Offset, ENTRIES_PER_TABLE, PAGE_SIZE};
-use crate::heap::{alloc, free};
 
 #[derive(Debug, Clone, Copy)]
 pub struct PageTableEntry(usize);
@@ -30,7 +29,7 @@ impl PageTableEntry {
 
 impl PageTable {
     pub fn new(offset: Offset, flags: Flags) -> Self {
-        let entries: *mut PageTableEntry = alloc(ENTRIES_PER_TABLE * ENTRY_SIZE);
+        let entries: *mut PageTableEntry = alloc!(ENTRIES_PER_TABLE * ENTRY_SIZE);
         for entry in 0..ENTRIES_PER_TABLE {
             let addr = Addr(offset.0 + entry * PAGE_SIZE);
             unsafe {
@@ -45,7 +44,7 @@ impl PageTable {
     }
 
     pub fn free(self) {
-        free(self.entries);
+        free!(self.entries);
     }
 
     /// # Safety

@@ -4,7 +4,6 @@ use global::global;
 
 use crate::boxed::Array;
 use crate::fs::{FileMode, VFS};
-use crate::heap::alloc;
 use crate::loader::elf::Elf;
 use crate::paging::{Addr, PAGE_SIZE};
 use crate::paging::{PAGE_ACCESS_ALL, PAGE_IS_PRESENT, PAGE_IS_WRITABLE};
@@ -141,7 +140,7 @@ impl Process {
 
     fn from_bare(mut bare: ProcessBare) -> Shared<Self> {
         // Stack
-        let stack: *const () = alloc(USER_STACK_SIZE);
+        let stack: *const () = alloc!(USER_STACK_SIZE);
         bare.task.page_directory.map_range(
             Addr(USER_STACK_END),
             Addr(stack as usize),
@@ -225,7 +224,7 @@ impl Process {
                 // BSS Section
                 if pheader.filesz() == 0 && pheader.memsz() > 0 {
                     assert!(bss.is_null(), "Many BSS sections? :O");
-                    bss = alloc(pheader.memsz());
+                    bss = alloc!(pheader.memsz());
                 }
 
                 directory.map_range(

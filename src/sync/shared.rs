@@ -1,5 +1,4 @@
 use super::lock::RWLock;
-use crate::heap::{alloc, free};
 
 use core::ptr::NonNull;
 use core::sync::atomic::{AtomicUsize, Ordering};
@@ -34,7 +33,7 @@ impl<T> Shared<T> {
     pub fn new(t: T) -> Self {
         let inner = unsafe {
             let x = SharedInner::new(t);
-            let t_ptr = alloc::<SharedInner<T>>(core::mem::size_of::<SharedInner<T>>());
+            let t_ptr: *mut SharedInner<T> = alloc!(core::mem::size_of::<SharedInner<T>>());
             t_ptr.write(x);
             NonNull::new(t_ptr).expect("non-null pointer")
         };
@@ -43,7 +42,7 @@ impl<T> Shared<T> {
     }
 
     fn free(&mut self) {
-        free(self.0.as_ptr())
+        free!(self.0.as_ptr())
     }
 
     fn inner(&self) -> &SharedInner<T> {
@@ -156,7 +155,7 @@ impl<T> Drop for Weak<T> {
 
         if weak.fetch_sub(1, Ordering::Release) == 1 {
             lock.wlock();
-            free(ptr);
+            free!(ptr);
         }
     }
 }

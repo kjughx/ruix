@@ -1,5 +1,3 @@
-use crate::heap::{alloc, free};
-
 use core::{
     marker::PhantomData,
     ops::{Deref, DerefMut, Index},
@@ -19,7 +17,7 @@ impl<T> Array<T> {
     pub fn new(cap: usize) -> Self {
         unsafe {
             let t_ptr =
-                core::mem::transmute::<*mut u8, *mut T>(alloc(cap * core::mem::size_of::<T>()));
+                core::mem::transmute::<*mut u8, *mut T>(alloc!(cap * core::mem::size_of::<T>()));
 
             core::ptr::write_bytes(t_ptr, 0, cap);
 
@@ -32,7 +30,7 @@ impl<T> Array<T> {
     }
 
     pub fn free(&mut self) {
-        free(self.data.as_ptr())
+        free!(self.data.as_ptr())
     }
 
     pub fn as_ptr(&self) -> *const T {

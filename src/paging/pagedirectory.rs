@@ -1,7 +1,6 @@
 use core::marker::PhantomData;
 use core::ops::Range;
 
-use crate::heap::{alloc, free};
 use crate::{trace, traceln};
 
 use super::{
@@ -17,7 +16,8 @@ pub struct PageDirectory {
 
 impl PageDirectory {
     pub fn new(pte_flags: Flags) -> Self {
-        let tables = alloc::<PageTable>(ENTRIES_PER_TABLE * ENTRY_SIZE);
+        // let tables = alloc::<PageTable>(ENTRIES_PER_TABLE * ENTRY_SIZE);
+        let tables: *mut PageTable = alloc!(ENTRIES_PER_TABLE * ENTRY_SIZE);
 
         for dentry in 0..ENTRIES_PER_TABLE {
             unsafe {
@@ -74,7 +74,7 @@ impl PageDirectory {
             table.free()
         }
 
-        free(self.tables)
+        free!(self.tables)
     }
 
     fn get_table(&self, page: Page) -> PageTable {

@@ -1,7 +1,7 @@
 use core::ptr::{self, Unique};
 
 mod kernel_heap;
-pub use kernel_heap::{alloc, free, realloc};
+pub use kernel_heap::{alloc_, free_, realloc_};
 
 pub const HEAP_BLOCK_SIZE: usize = 4096;
 
@@ -146,4 +146,27 @@ impl Heap {
             return val / HEAP_BLOCK_SIZE + 1;
         }
     }
+}
+
+macro_rules! alloc {
+    ($t:expr) => {{
+        let ptr = crate::heap::alloc_($t);
+        crate::traceln!("Allocating: {:?}", ptr);
+        ptr
+    }};
+}
+
+macro_rules! realloc {
+    ($t:expr, $s:expr) => {{
+        let ptr = crate::heap::realloc_($t, $s);
+        crate::traceln!("Reallocating: {:?} to {:?}", $t, ptr);
+        ptr
+    }};
+}
+
+macro_rules! free {
+    ($t:expr) => {{
+        crate::heap::free_($t);
+        crate::traceln!("Freeing: {:?}", $t);
+    }};
 }

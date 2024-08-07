@@ -1,5 +1,3 @@
-use crate::heap::{alloc, free, realloc};
-
 use core::{
     marker::PhantomData,
     ops::{Deref, DerefMut, Index, IndexMut},
@@ -37,8 +35,8 @@ const DEFAULT_VEC_CAP: usize = 16;
 impl<T: Copy> Vec<T> {
     pub fn new() -> Self {
         unsafe {
-            let t_ptr = core::mem::transmute::<*mut u8, *mut T>(alloc(
-                DEFAULT_VEC_CAP * core::mem::size_of::<T>(),
+            let t_ptr = core::mem::transmute::<*mut u8, *mut T>(alloc!(
+                DEFAULT_VEC_CAP * core::mem::size_of::<T>()
             ));
 
             Self {
@@ -53,7 +51,7 @@ impl<T: Copy> Vec<T> {
     pub fn with_capacity(cap: usize) -> Self {
         unsafe {
             let t_ptr =
-                core::mem::transmute::<*mut u8, *mut T>(alloc(cap * core::mem::size_of::<T>()));
+                core::mem::transmute::<*mut u8, *mut T>(alloc!(cap * core::mem::size_of::<T>()));
 
             Self {
                 data: Unique::new_unchecked(t_ptr),
@@ -66,9 +64,9 @@ impl<T: Copy> Vec<T> {
 
     fn grow(&mut self) {
         unsafe {
-            self.data = Unique::new_unchecked(core::mem::transmute::<*mut u8, *mut T>(realloc(
+            self.data = Unique::new_unchecked(core::mem::transmute::<*mut u8, *mut T>(realloc!(
                 self.data.as_ptr() as *mut u8,
-                2 * self.cap,
+                2 * self.cap
             )));
         }
         self.cap *= 2;
@@ -155,7 +153,7 @@ impl<T: Copy> Default for Vec<T> {
 
 impl<T: Sized> Drop for Vec<T> {
     fn drop(&mut self) {
-        free(self.data.as_ptr())
+        free!(self.data.as_ptr())
     }
 }
 
