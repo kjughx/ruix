@@ -44,6 +44,13 @@ impl PageDirectory {
             table.free();
         }
     }
+
+    pub fn get_entry(&self, vaddr: Addr) -> PageTableEntry {
+        let ptr = self.ptr() as usize + ((vaddr.0 >> 12) & 0x3FF) * 4;
+
+        PageTableEntry::new(Addr(ptr & 0xfffff000), (ptr & 0x00000fff) as u16)
+    }
+
     pub fn inspect(&self, drange: Range<usize>, trange: Range<usize>) {
         traceln!("Page Directory");
         for i in drange {
@@ -110,14 +117,6 @@ impl PageDirectory {
                 flags,
             );
         }
-    }
-
-    pub fn get_entry(&self, vaddr: Addr) -> Option<PageTableEntry> {
-        if !vaddr.is_aligned() {
-            return None;
-        }
-
-        Some(self.get_table(vaddr.as_page()).get(vaddr.as_offset()))
     }
 
     pub fn get_paddr(&self, vaddr: Addr) -> Addr {
