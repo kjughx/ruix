@@ -116,4 +116,8 @@ impl Elf {
 
         arr
     }
+
+    pub fn free(&mut self) {
+        self.file.free()
+    }
 }

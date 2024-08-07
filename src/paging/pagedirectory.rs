@@ -38,6 +38,12 @@ impl PageDirectory {
         self.tables
     }
 
+    pub fn free(&mut self) {
+        for dentry in 0..ENTRIES_PER_TABLE {
+            let table = self.get_table(Page(dentry));
+            table.free();
+        }
+    }
     pub fn inspect(&self, drange: Range<usize>, trange: Range<usize>) {
         traceln!("Page Directory");
         for i in drange {

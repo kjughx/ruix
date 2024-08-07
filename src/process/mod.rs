@@ -1,24 +1,56 @@
 use core::marker::PhantomData;
 
+use global::global;
+
 use crate::boxed::Array;
 use crate::fs::{FileMode, Vfs};
 use crate::heap::alloc;
-use crate::loader;
 use crate::loader::elf::Elf;
 use crate::paging::{Addr, PAGE_SIZE};
 use crate::paging::{PAGE_ACCESS_ALL, PAGE_IS_PRESENT, PAGE_IS_WRITABLE};
 use crate::path::Path;
-use crate::string::Str;
 use crate::sync::{Global, Shared, Weak};
 use crate::task::Task;
+use crate::{loader, traceln};
 
 const USER_STACK_SIZE: usize = 16 * 1024;
 const USER_STACK_START: usize = 0x3FF000;
 const USER_STACK_END: usize = USER_STACK_START - USER_STACK_SIZE;
 const USER_VIRTUAL_START: usize = 0x400000;
 const MAX_PROCESSES: usize = 12;
-static mut PROCESSES: Global<[Option<Shared<Process>>; MAX_PROCESSES]> =
-    Global::new(|| [const { None }; MAX_PROCESSES], "PROCESSES");
+
+static mut PROCESSES: Global<[Option<Shared<Process>>; MAX_PROCESSES]> = Global::new(
+    || {
+        let mut processes: [Option<Shared<Process>>; MAX_PROCESSES] =
+            [const { None }; MAX_PROCESSES];
+        processes[0] = Some(Process::idle());
+        processes
+    },
+    "PROCESSES",
+);
+
+global!(Current, usize, 0, "CURRENT_PROCESS");
+
+impl Current {
+    pub fn assign(id: usize) {
+        Current::get_mut().with_wlock(|current| *current = id)
+    }
+}
+
+pub struct CurrentProcess;
+impl CurrentProcess {
+    pub fn get() -> Weak<Process> {
+        Current::get().with_rlock(|id| unsafe {
+            PROCESSES.with_rlock(|processes| {
+                if let Some(ref proc) = processes[*id] {
+                    Shared::weak(proc)
+                } else {
+                    Shared::weak(processes[0].as_ref().unwrap())
+                }
+            })
+        })
+    }
+}
 
 #[derive(Debug)]
 pub enum ProcessError {
@@ -28,7 +60,7 @@ pub enum ProcessError {
 
 // Pointer to the data and its size
 enum ProcessData {
-    Binary(Array<u8>),
+    Binary(Array<u8>, PhantomData<[u8]>),
     Elf(Elf),
 }
 
@@ -60,44 +92,117 @@ impl Processes {
         None
     }
 
-    /// # Safety: Unsafe because it trusts the PROCESSES is locked
-    unsafe fn insert(id: usize, process: Process) {
+    fn insert(mut process: Shared<Process>) -> Option<usize> {
         unsafe {
-            PROCESSES.force()[id] = Some(Shared::new(process));
+            PROCESSES.with_wlock(|list| -> Option<usize> {
+                let id = Self::find_slot()?;
+
+                process.with_wlock(|process| process.id = id);
+                list[id] = Some(process);
+                Some(id)
+            })
         }
     }
+}
+
+struct ProcessBare {
+    task: Task,
+    data: ProcessData,
+    bss: Option<*const ()>,
 }
 
 pub struct Process {
-    id: u16,
-    filename: Str,
-    pub task: Task,
+    id: usize,
+    task: Shared<Task>,
     // TODO: Track allocations
     data: ProcessData,
-    bss: *const (),
+    bss: Option<*const ()>,
     stack: *const (),
-    _marker: PhantomData<[u8]>,
+    _bss_marker: PhantomData<[u8]>,
+    _stack_marker: PhantomData<[u8]>,
 }
 
 impl Process {
-    pub fn new(filename: &str) -> Result<Process, ProcessError> {
-        match Self::new_elf(filename) {
-            Err(ProcessError::InvalidFormat) => Self::new_binary(filename),
-            a => a,
+    pub fn new(filename: &str) -> Result<Shared<Process>, ProcessError> {
+        let bare = Self::new_binary(filename)?;
+        // let bare = match Self::new_elf(filename) {
+        //     Err(ProcessError::InvalidFormat) => Self::new_binary(filename)?,
+        //     bare => bare?,
+        // };
+
+        let process = Self::from_bare(bare);
+
+        if let Some(id) = Processes::insert(process.clone()) {
+            Current::assign(id);
         }
+
+        Ok(process)
     }
 
-    fn new_elf(filename: &str) -> Result<Process, ProcessError> {
-        // No races for this
-        unsafe { PROCESSES.wlock() };
-        let id = unsafe { Processes::find_slot().expect("Available slots") };
+    fn from_bare(mut bare: ProcessBare) -> Shared<Self> {
+        // Stack
+        let stack: *const () = alloc(USER_STACK_SIZE);
+        bare.task.page_directory.map_range(
+            Addr(USER_STACK_END),
+            Addr(stack as usize),
+            Addr(stack as usize + USER_STACK_SIZE).align_upper(),
+            PAGE_IS_PRESENT | PAGE_ACCESS_ALL | PAGE_IS_WRITABLE,
+        );
 
+        let mut process = Shared::new(Self {
+            id: 0,
+            task: Shared::new(bare.task),
+            data: bare.data,
+            bss: bare.bss,
+            stack,
+            _bss_marker: PhantomData,
+            _stack_marker: PhantomData,
+        });
+
+        let weak = Shared::weak(&process);
+
+        process.with_wlock(|process| process.task.with_wlock(|task| task.process = weak));
+
+        process
+    }
+
+    pub fn task(&self) -> Weak<Task> {
+        Shared::weak(&self.task)
+    }
+
+    pub fn idle() -> Shared<Process> {
+        let mut task = Task::new(Weak::new(), None);
+
+        let s = &[235, 254];
+        let program_data: Array<u8> = Array::from(&s[..]);
+
+        // Map the memory
+        {
+            let directory = &mut task.page_directory;
+            // Code
+            directory.map_range(
+                Addr(USER_VIRTUAL_START),
+                Addr(program_data.as_ptr() as usize),
+                Addr(program_data.as_ptr() as usize + 2).align_upper(),
+                PAGE_IS_PRESENT | PAGE_ACCESS_ALL,
+            );
+        }
+
+        let bare = ProcessBare {
+            task,
+            data: ProcessData::Binary(program_data, PhantomData),
+            bss: None,
+        };
+
+        Self::from_bare(bare)
+    }
+
+    fn new_elf(filename: &str) -> Result<ProcessBare, ProcessError> {
         let elf = match Elf::load(filename) {
             Err(loader::Error::BadFormat) => return Err(ProcessError::InvalidFormat),
             a => a.unwrap(),
         };
 
-        let stack = alloc(USER_STACK_SIZE);
         let mut task = Task::new(Weak::new(), Some(elf.entry_point()));
 
         // Map the memory
@@ -130,42 +235,27 @@ impl Process {
                     flags,
                 )
             }
-
-            // Stack
-            directory.map_range(
-                Addr(USER_STACK_END),
-                Addr(stack as usize),
-                Addr(stack as usize + USER_STACK_SIZE).align_upper(),
-                PAGE_IS_PRESENT | PAGE_ACCESS_ALL | PAGE_IS_WRITABLE,
-            );
-
             bss
         };
 
-        Ok(Self {
-            id: id as u16,
-            filename: Str::from(filename),
+        Ok(ProcessBare {
             task,
             data: ProcessData::Elf(elf),
-            bss: bss as *const (),
-            stack,
-            _marker: PhantomData,
+            bss: Some(bss as *const ()),
         })
     }
 
-    fn new_binary(filename: &str) -> Result<Process, ProcessError> {
-        // No races for this
-        unsafe { PROCESSES.wlock() };
-        let id = unsafe { Processes::find_slot().expect("Available slots") };
-
+    fn new_binary(filename: &str) -> Result<ProcessBare, ProcessError> {
         let fd = Vfs::open(Path::new(filename), FileMode::ReadOnly).unwrap();
         let size = fd.stat().size;
 
         let program_data = fd.read_all().unwrap();
 
-        let stack = alloc(USER_STACK_SIZE);
+        traceln!("{:?}", program_data.as_ptr());
+
         let mut task = Task::new(Weak::new(), None);
 
+        traceln!("{:?}", task.page_directory.ptr());
         // Map the memory
         {
             let directory = &mut task.page_directory;
@@ -176,24 +266,21 @@ impl Process {
                 Addr(program_data.as_ptr() as usize + size).align_upper(),
                 PAGE_IS_PRESENT | PAGE_ACCESS_ALL,
             );
-
-            // Stack
-            directory.map_range(
-                Addr(USER_STACK_END),
-                Addr(stack as usize),
-                Addr(stack as usize + USER_STACK_SIZE).align_upper(),
-                PAGE_IS_PRESENT | PAGE_ACCESS_ALL | PAGE_IS_WRITABLE,
-            );
         }
 
-        Ok(Self {
-            id: id as u16,
-            filename: Str::from(filename),
+        Ok(ProcessBare {
             task,
-            data: ProcessData::Binary(program_data),
-            bss: core::ptr::null(),
-            stack,
-            _marker: PhantomData,
+            data: ProcessData::Binary(program_data, PhantomData),
+            bss: None,
         })
+    }
+}
+
+impl Drop for Process {
+    fn drop(&mut self) {
+        match self.data {
+            ProcessData::Binary(ref mut data, _) => data.free(),
+            ProcessData::Elf(ref mut elf) => elf.free(),
+        }
     }
 }

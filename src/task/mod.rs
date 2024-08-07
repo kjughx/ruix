@@ -3,12 +3,19 @@ use core::arch::asm;
 use crate::cpu::{InterruptFrame, Registers};
 use crate::paging::PAGE_IS_WRITABLE;
 use crate::paging::{pagedirectory::PageDirectory, Paging, PAGE_ACCESS_ALL, PAGE_IS_PRESENT};
-use crate::process::Process;
+use crate::process::{CurrentProcess, Process};
 use crate::sync::{Shared, Weak};
 
 pub mod tss;
 
 // TODO: Implement a task-list
+
+pub struct CurrentTask;
+impl CurrentTask {
+    pub fn get() -> Weak<Task> {
+        CurrentProcess::get().with_rlock(|current| current.task())
+    }
+}
 
 pub struct Task {
     pub page_directory: PageDirectory,
@@ -45,5 +52,11 @@ impl Task {
     #[naked]
     unsafe extern "C" fn task_return(registers: *const Registers) {
         asm!("nop", options(noreturn))
+    }
+}
+
+impl Drop for Task {
+    fn drop(&mut self) {
+        self.page_directory.free()
     }
 }
