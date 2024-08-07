@@ -10,6 +10,7 @@
 #![allow(dead_code)]
 extern crate global;
 extern crate packed;
+pub extern crate syscall_macro;
 
 mod boot;
 pub mod boxed;
@@ -26,6 +27,7 @@ pub mod path;
 pub mod process;
 pub mod start;
 pub mod string;
+pub mod syscall;
 pub mod task;
 pub mod tty;
 #[macro_use]

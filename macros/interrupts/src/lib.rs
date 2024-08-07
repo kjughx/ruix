@@ -36,6 +36,7 @@ pub fn interrupt_table(input: TokenStream) -> TokenStream {
             pub extern "C" fn #fn_name() {
                 unsafe {
                     core::arch::asm!(
+                        "cli",
                         // CPU does:
                         // push ss
                         // push sp

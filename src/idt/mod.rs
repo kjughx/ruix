@@ -4,15 +4,14 @@ use crate::{
     cpu::InterruptFrame,
     io::outb,
     packed::{packed, Packed},
-    traceln,
+    syscall, traceln,
 };
 
 extern crate interrupts;
 
-const MAX_INTERRUPTS: usize = 128;
-
+const MAX_INTERRUPTS: usize = 255;
 // See docs
-interrupts::interrupt_table!(128);
+interrupts::interrupt_table!(255);
 
 #[no_mangle]
 fn interrupt_handler(i: u16, frame: *const InterruptFrame) {
@@ -84,6 +83,8 @@ impl IDT {
         for i in 0..MAX_INTERRUPTS {
             Self::set(i, INTERRUPT_POINTER_TABLE[i]);
         }
+
+        Self::set(0x80, syscall::entry_syscall);
 
         unsafe {
             IDT_RECORD = IDTRecord::new(

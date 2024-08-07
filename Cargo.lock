@@ -54,6 +54,7 @@ dependencies = [
  "global",
  "interrupts",
  "packed",
+ "syscall_macro",
 ]
 
 [[package]]
@@ -65,6 +66,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "syscall_macro"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

@@ -4,9 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-packed = {path = "macros/packed"}
-interrupts = {path = "macros/interrupts" }
-global = {path = "macros/global"}
+packed = { path = "macros/packed" }
+interrupts = { path = "macros/interrupts" }
+global = { path = "macros/global" }
+syscall_macro = { path = "macros/syscall" }
 
 
 [[bin]]
@@ -15,7 +16,7 @@ path = "src/kernel.rs"
 
 # the profile used for `cargo build`
 [profile.dev]
-panic = "abort" # disable stack unwinding on panic
+panic = "abort"           # disable stack unwinding on panic
 opt-level = "s"
 split-debuginfo = "false"
 lto = "off"
