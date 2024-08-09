@@ -3,7 +3,7 @@ use core::fmt::Display;
 
 use crate::paging::Paging;
 use crate::sync::Shared;
-use crate::task::Task;
+use crate::task::{CurrentTask, Task};
 
 use crate::packed::{packed, Packed};
 
@@ -91,6 +91,11 @@ impl CPU {
         });
 
         unsafe { Self::_user_return(&registers) };
+    }
+
+    pub unsafe fn return_to_current() {
+        let task = CurrentTask::get();
+        unsafe { CPU::return_to_task(task) }
     }
 
     unsafe extern "C" fn _user_return(regs: &Registers) {

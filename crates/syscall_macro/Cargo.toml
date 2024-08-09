@@ -10,3 +10,7 @@ proc-macro2 = "1.0"
 
 [lib]
 proc-macro = true
+
+[features]
+kernel = []
+user = []

@@ -9,9 +9,10 @@
 #![feature(unsize)]
 #![feature(asm_const)]
 #![allow(dead_code)]
+#![allow(bad_asm_style)]
 extern crate global;
 extern crate packed;
-pub extern crate syscall_macro;
+pub extern crate syscalls;
 
 #[macro_use]
 pub mod heap;

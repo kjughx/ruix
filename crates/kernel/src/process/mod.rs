@@ -39,13 +39,13 @@ impl Current {
 
 pub struct CurrentProcess;
 impl CurrentProcess {
-    pub fn get() -> Weak<Process> {
+    pub fn get() -> Shared<Process> {
         Current::get().with_rlock(|id| unsafe {
             PROCESSES.with_rlock(|processes| {
                 if let Some(ref proc) = processes[*id] {
-                    Shared::weak(proc)
+                    proc.clone()
                 } else {
-                    Shared::weak(processes[0].as_ref().unwrap())
+                    processes[0].as_ref().unwrap().clone()
                 }
             })
         })
@@ -120,15 +120,16 @@ pub struct Process {
     stack: *const (),
     _bss_marker: PhantomData<[u8]>,
     _stack_marker: PhantomData<[u8]>,
+
+    _mark_dead: bool, // If true, the process is effectively dead and should be cleaned-up
 }
 
 impl Process {
     pub fn new(filename: &str) -> Result<Shared<Process>, ProcessError> {
-        let bare = Self::new_binary(filename)?;
-        // let bare = match Self::new_elf(filename) {
-        //     Err(ProcessError::InvalidFormat) => Self::new_binary(filename)?,
-        //     bare => bare?,
-        // };
+        let bare = match Self::new_elf(filename) {
+            Err(ProcessError::InvalidFormat) => Self::new_binary(filename)?,
+            bare => bare?,
+        };
 
         let process = Self::from_bare(bare);
 
@@ -157,6 +158,7 @@ impl Process {
             stack,
             _bss_marker: PhantomData,
             _stack_marker: PhantomData,
+            _mark_dead: false,
         });
 
         let weak = Shared::weak(&process);
@@ -276,13 +278,17 @@ impl Process {
             bss: None,
         })
     }
-}
 
-impl Drop for Process {
-    fn drop(&mut self) {
-        match self.data {
-            ProcessData::Binary(ref mut data, _) => data.free(),
-            ProcessData::Elf(ref mut elf) => elf.free(),
-        }
+    /// This marks the process as dead.
+    /// Touching it after this is undefined behaviour.
+    pub fn mark_dead(mut this: Shared<Process>, _: i32) {
+        this.with_wlock(|process| process._mark_dead = true);
+
+        // TODO: How do we clean up the memory of the process?
+        //  This is called in the syscall handler so cannot block
+        // Make a garbage-collecting worker thread.
+
+        // TODO: Change to a more reasonable process.
+        Current::assign(0);
     }
 }

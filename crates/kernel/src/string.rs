@@ -33,6 +33,12 @@ impl Str {
     }
 }
 
+impl Drop for Str {
+    fn drop(&mut self) {
+        self.0.free()
+    }
+}
+
 impl From<&str> for Str {
     fn from(value: &str) -> Self {
         let mut arr = Array::new(value.len());

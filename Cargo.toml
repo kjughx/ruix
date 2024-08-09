@@ -1,23 +1,11 @@
-[package]
-name = "ruix"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-packed = { path = "macros/packed" }
-interrupts = { path = "macros/interrupts" }
-global = { path = "macros/global" }
-syscall_macro = { path = "macros/syscall" }
-
-
-[[bin]]
-name = "kernel"
-path = "src/kernel.rs"
+[workspace]
+members = ["crates/kernel", "crates/std"]
+resolver = "2"
 
 # the profile used for `cargo build`
 [profile.dev]
 panic = "abort"           # disable stack unwinding on panic
-opt-level = "s"
+opt-level = 1
 split-debuginfo = "false"
 lto = "off"
 

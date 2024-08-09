@@ -10,6 +10,3 @@ syn = { version = "1", features = ["full"] }
 
 [lib]
 proc-macro = true
-
-[build]
-target = "i686-unknown-linux-gnu"

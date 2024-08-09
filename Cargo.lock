@@ -21,6 +21,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "kernel"
+version = "0.1.0"
+dependencies = [
+ "global",
+ "interrupts",
+ "packed",
+ "syscall_macro",
+ "syscalls",
+]
+
+[[package]]
 name = "packed"
 version = "0.1.0"
 dependencies = [
@@ -48,13 +59,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "ruix"
+name = "std"
 version = "0.1.0"
 dependencies = [
- "global",
- "interrupts",
- "packed",
  "syscall_macro",
+ "syscalls",
 ]
 
 [[package]]
@@ -75,6 +84,13 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "syscalls"
+version = "0.1.0"
+dependencies = [
+ "syscall_macro",
 ]
 
 [[package]]

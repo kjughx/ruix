@@ -1,0 +1,15 @@
+[package]
+name = "kernel"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+packed = { path = "macros/packed" }
+interrupts = { path = "macros/interrupts" }
+global = { path = "macros/global" }
+syscall_macro = { path = "../syscall_macro", features = ["kernel"] }
+syscalls = { path = "../syscalls", features = ["kernel"] }
+
+[[bin]]
+name = "kernel"
+path = "src/kernel.rs"

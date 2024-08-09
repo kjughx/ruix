@@ -1,18 +1,20 @@
 #![no_std]
 #![no_main]
 
-use ruix::{
+use kernel::{
     fs::VFS,
     gdt::GDT,
     idt::IDT,
     paging::{KernelPage, Paging},
-    println, traceln,
+    println,
+    process::Process,
     tty::Terminal,
 };
 
 #[no_mangle]
 extern "C" fn kmain() {
     Terminal::init();
+    println!("Booting ruix v0.0.1");
 
     GDT::load();
 
@@ -23,6 +25,7 @@ extern "C" fn kmain() {
     KernelPage::switch();
     Paging::enable();
 
-    println!("Hello, World!");
-    traceln!("Hello, World!");
+    let process = Process::new("0:/SHELL").unwrap();
+
+    Process::exec(process);
 }

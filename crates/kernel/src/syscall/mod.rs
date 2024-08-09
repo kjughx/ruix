@@ -1,15 +1,16 @@
 use crate::{
-    cpu::InterruptFrame,
+    cpu::{InterruptFrame, CPU},
     io::outb,
     paging::KernelPage,
-    syscall_macro::{syscall, syscalls},
+    process::{CurrentProcess, Process},
+    syscalls::{gen_syscalls, syscall},
     task::{CurrentTask, Task},
     traceln,
 };
 use core::arch::asm;
 
-const NUM_SYSCALLS: usize = 2;
-syscalls!(2);
+const NUM_SYSCALLS: usize = 1;
+gen_syscalls!(1);
 
 #[no_mangle]
 static mut SYSCALL_RETURN: usize = 0;
@@ -66,17 +67,10 @@ pub unsafe fn syscall_handler(command: usize, frame: *const InterruptFrame) -> u
 }
 
 #[syscall(0)]
-fn print(_frame: &InterruptFrame) -> usize {
-    let int = Task::copy_stack_item::<u32>(CurrentTask::get(), 0);
+fn exit(code: i32) -> usize {
+    Process::mark_dead(CurrentProcess::get(), code);
 
-    traceln!("Got from userland: 0x{:x}", int);
+    unsafe { CPU::return_to_current() };
 
-    1
-}
-
-#[syscall(1)]
-fn exit(frame: &InterruptFrame) -> usize {
-    traceln!("{}", frame);
-
-    2
+    unreachable!()
 }
