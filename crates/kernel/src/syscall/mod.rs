@@ -1,3 +1,5 @@
+use interrupts::interrupt_handler;
+
 use crate::{
     cpu::{InterruptFrame, CPU},
     io::outb,
@@ -5,7 +7,6 @@ use crate::{
     process::{CurrentProcess, Process},
     syscalls::{gen_syscalls, syscall},
     task::{CurrentTask, Task},
-    traceln,
 };
 use core::arch::asm;
 
@@ -15,8 +16,7 @@ gen_syscalls!(1);
 #[no_mangle]
 static mut SYSCALL_RETURN: usize = 0;
 
-#[naked]
-#[no_mangle]
+#[interrupt_handler(0x80)]
 pub extern "C" fn entry_syscall() {
     unsafe {
         asm!(

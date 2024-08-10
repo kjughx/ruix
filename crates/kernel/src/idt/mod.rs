@@ -4,10 +4,21 @@ use crate::{
     cpu::InterruptFrame,
     io::outb,
     packed::{packed, Packed},
-    syscall, traceln,
+    traceln,
 };
 
 extern crate interrupts;
+
+#[repr(C, packed)]
+pub struct InterruptEntry {
+    pub ptr: unsafe extern "C" fn(),
+    pub id: u16,
+}
+
+extern "C" {
+    static START_ISRS: usize;
+    static END_ISRS: usize;
+}
 
 const MAX_INTERRUPTS: usize = 255;
 // See docs
@@ -22,6 +33,7 @@ fn interrupt_handler(i: u16, frame: *const InterruptFrame) {
     if i == 13 {
         panic!("UNHANDLED PAGE FAULT");
     }
+
     outb(0x20, 0x20);
 }
 
@@ -80,15 +92,31 @@ static mut IDT_DESCRIPTORS: [IDTDescriptor; MAX_INTERRUPTS] =
 
 static mut IDT_RECORD: IDTRecord = IDTRecord { limit: 0, base: 0 };
 
+#[inline(never)]
+fn find_registered_isrs() -> &'static [InterruptEntry] {
+    unsafe {
+        let start: *const InterruptEntry = (&START_ISRS as *const usize) as *const InterruptEntry;
+        let end: *const InterruptEntry = (&END_ISRS as *const usize) as *const InterruptEntry;
+
+        let count = (end as usize - start as usize) / core::mem::size_of::<InterruptEntry>();
+
+        &*core::ptr::slice_from_raw_parts(start, count)
+    }
+}
+
 pub struct IDT;
 impl IDT {
     #[allow(clippy::needless_range_loop)]
     pub fn load() {
+        // Set defaults
         for i in 0..MAX_INTERRUPTS {
             Self::set(i, INTERRUPT_POINTER_TABLE[i]);
         }
 
-        Self::set(0x80, syscall::entry_syscall);
+        let entries = find_registered_isrs();
+        for entry in entries {
+            Self::set(entry.id as usize, entry.ptr)
+        }
 
         unsafe {
             IDT_RECORD = IDTRecord::new(

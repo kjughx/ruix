@@ -18,6 +18,14 @@ SECTIONS
         *(.text.*)
     }
 
+    .isrs :  {
+        PROVIDE(START_ISRS = .);
+
+        KEEP(*(.isr.*))
+
+        PROVIDE(END_ISRS = .);
+    }
+
     .rodata : ALIGN(4096) {
         *(.rodata)
         *(.rodata..*)
