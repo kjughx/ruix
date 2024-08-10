@@ -1,7 +1,7 @@
 use core::arch::asm;
 
+use super::cpu::InterruptFrame;
 use crate::{
-    cpu::InterruptFrame,
     io::outb,
     packed::{packed, Packed},
     traceln,

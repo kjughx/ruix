@@ -1,17 +1,19 @@
 use core::marker::PhantomData;
 
 use global::global;
+use implement::implement;
 
+use super::paging::{Addr, PAGE_SIZE};
+use super::paging::{PAGE_ACCESS_ALL, PAGE_IS_PRESENT, PAGE_IS_WRITABLE};
 use crate::boxed::Array;
-use crate::cpu::CPU;
 use crate::fs::{FileMode, VFS};
 use crate::loader;
 use crate::loader::elf::Elf;
-use crate::paging::{Addr, PAGE_SIZE};
-use crate::paging::{PAGE_ACCESS_ALL, PAGE_IS_PRESENT, PAGE_IS_WRITABLE};
 use crate::path::Path;
 use crate::sync::{Global, Shared, Weak};
-use crate::task::Task;
+
+pub mod task;
+use task::Task;
 
 const USER_STACK_SIZE: usize = 16 * 1024;
 const USER_STACK_START: usize = 0x3FF000;
@@ -125,21 +127,6 @@ pub struct Process {
 }
 
 impl Process {
-    pub fn new(filename: &str) -> Result<Shared<Process>, ProcessError> {
-        let bare = match Self::new_elf(filename) {
-            Err(ProcessError::InvalidFormat) => Self::new_binary(filename)?,
-            bare => bare?,
-        };
-
-        let process = Self::from_bare(bare);
-
-        if let Some(id) = Processes::insert(process.clone()) {
-            Current::assign(id);
-        }
-
-        Ok(process)
-    }
-
     fn from_bare(mut bare: ProcessBare) -> Shared<Self> {
         // Stack
         let stack: *const () = alloc!(USER_STACK_SIZE);
@@ -168,16 +155,11 @@ impl Process {
         process
     }
 
-    pub fn exec(proc: Shared<Self>) {
-        let task = proc.with_rlock(|inner| inner.task());
-        unsafe { CPU::return_to_task(task) }
-    }
-
-    pub fn task(&self) -> Shared<Task> {
+    pub(super) fn task(&self) -> Shared<Task> {
         self.task.clone()
     }
 
-    pub fn idle() -> Shared<Process> {
+    pub(super) fn idle() -> Shared<Process> {
         let mut task = Task::new(Weak::new(), None);
 
         let s = &[235, 254];
@@ -252,7 +234,7 @@ impl Process {
         })
     }
 
-    fn new_binary(filename: &str) -> Result<ProcessBare, ProcessError> {
+    fn new_binary(filename: &str) -> ProcessBare {
         let fd = VFS::open(Path::new(filename), FileMode::ReadOnly).unwrap();
         let size = fd.stat().size;
 
@@ -272,16 +254,16 @@ impl Process {
             );
         }
 
-        Ok(ProcessBare {
+        ProcessBare {
             task,
             data: ProcessData::Binary(program_data, PhantomData),
             bss: None,
-        })
+        }
     }
 
     /// This marks the process as dead.
     /// Touching it after this is undefined behaviour.
-    pub fn mark_dead(mut this: Shared<Process>, _: i32) {
+    pub(super) fn mark_dead(mut this: Shared<Process>, _: i32) {
         this.with_wlock(|process| process._mark_dead = true);
 
         // TODO: How do we clean up the memory of the process?
@@ -290,5 +272,38 @@ impl Process {
 
         // TODO: Change to a more reasonable process.
         Current::assign(0);
+    }
+}
+
+#[implement]
+impl super::Process_ for Process {
+    fn new(filename: &str) -> Result<Shared<Self>, usize>
+    where
+        Self: Sized,
+    {
+        let bare = match Self::new_elf(filename) {
+            Err(ProcessError::InvalidFormat) => Self::new_binary(filename),
+            bare => bare.unwrap(),
+        };
+
+        let process = Self::from_bare(bare);
+
+        if let Some(id) = Processes::insert(process.clone()) {
+            Current::assign(id);
+        }
+
+        Ok(process)
+    }
+
+    fn exec_new(filename: &str) -> Result<(), usize> {
+        let proc = Self::new(filename)?;
+        Self::exec(proc);
+
+        Ok(())
+    }
+
+    fn exec(this: Shared<Self>) {
+        let task = this.with_rlock(|proc| proc.task());
+        unsafe { super::cpu::CPU::return_to_task(task) };
     }
 }

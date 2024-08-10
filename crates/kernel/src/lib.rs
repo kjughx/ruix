@@ -16,25 +16,19 @@ pub extern crate syscalls;
 
 #[macro_use]
 pub mod heap;
-mod boot;
 pub mod boxed;
-pub mod cpu;
 pub mod disk;
 pub mod fs;
-pub mod gdt;
-pub mod idt;
 pub mod io;
+mod keyboard;
 pub mod loader;
-pub mod paging;
 pub mod path;
-pub mod process;
 pub mod start;
 pub mod string;
-pub mod syscall;
-pub mod task;
 pub mod tty;
 #[macro_use]
 pub mod serial;
+pub mod platform;
 pub mod sync;
 
 pub trait Packed: Sized {}

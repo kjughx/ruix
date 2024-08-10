@@ -1,7 +1,9 @@
 use core::marker::PhantomData;
 use core::ops::Range;
 
-use crate::{trace, traceln};
+use implement::implement;
+
+use crate::{platform::Paging_, trace, traceln};
 
 use super::{
     pagetable::{PageTable, PageTableEntry, ENTRY_SIZE},
@@ -99,22 +101,15 @@ impl PageDirectory {
         table.set(tentry, entry)
     }
 
-    pub fn map(&mut self, vaddr: Addr, paddr: Addr, flags: Flags) {
-        assert!(vaddr.is_aligned(), "Invalid virtual address");
-        assert!(paddr.is_aligned(), "Invalid physical address");
-
-        self.set(vaddr, PageTableEntry::new(paddr, flags));
-    }
-
     pub fn map_range(&mut self, vstart: Addr, pstart: Addr, pend: Addr, flags: Flags) {
         assert!(pend.raw() >= pstart.raw(), "Invalid address range");
 
         let count = (pend.raw() - pstart.raw()) / PAGE_SIZE;
         for page in 0..count {
             self.map(
-                vstart.offset(page * PAGE_SIZE),
-                pstart.offset(page * PAGE_SIZE),
-                flags,
+                vstart.offset(page * PAGE_SIZE).0,
+                pstart.offset(page * PAGE_SIZE).0,
+                flags as usize,
             );
         }
     }
@@ -129,5 +124,46 @@ impl PageDirectory {
         self.get_table(vaddr.align_lower().as_page())
             .get(vaddr.as_offset())
             .flags()
+    }
+}
+
+#[implement]
+impl Paging_ for PageDirectory {
+    fn map(&mut self, vaddr: usize, paddr: usize, flags: usize) {
+        let vaddr = Addr(vaddr);
+        let paddr = Addr(paddr);
+        assert!(vaddr.is_aligned(), "Invalid virtual address");
+        assert!(paddr.is_aligned(), "Invalid physical address");
+
+        self.set(vaddr, PageTableEntry::new(paddr, flags as u16));
+    }
+
+    unsafe fn enable(&self) {
+        unsafe {
+            core::arch::asm!(
+                r#"
+                mov eax, cr0
+                or eax, 0x80000000
+                mov cr0, eax
+                "#
+            )
+        }
+    }
+
+    unsafe fn switch(&self) {
+        unsafe {
+            core::arch::asm!(
+                r#"
+                mov cr3, eax
+            "#, in("eax") self.ptr()
+            )
+        }
+        unsafe {
+            // CURRENT_DIRECTORY.with_wlock(|this| *this = *directory);
+        }
+    }
+
+    unsafe fn disable(&self) {
+        todo!()
     }
 }

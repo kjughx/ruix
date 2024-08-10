@@ -1,12 +1,14 @@
 use interrupts::interrupt_handler;
 
-use crate::{
-    cpu::{InterruptFrame, CPU},
-    io::outb,
-    paging::KernelPage,
-    process::{CurrentProcess, Process},
-    syscalls::{gen_syscalls, syscall},
+use super::cpu::{InterruptFrame, CPU};
+use super::paging::KernelPage;
+use super::process::{
     task::{CurrentTask, Task},
+    CurrentProcess, Process,
+};
+use crate::{
+    io::outb,
+    syscalls::{gen_syscalls, syscall},
 };
 use core::arch::asm;
 

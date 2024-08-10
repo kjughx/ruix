@@ -10,3 +10,9 @@ syn = { version = "1", features = ["full"] }
 
 [lib]
 proc-macro = true
+
+
+[features]
+x86 = []
+
+default = ["x86"]

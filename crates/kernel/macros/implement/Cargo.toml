@@ -1,5 +1,5 @@
 [package]
-name = "syscall_macro"
+name = "implement"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,10 +10,3 @@ proc-macro2 = "1.0"
 
 [lib]
 proc-macro = true
-
-[features]
-x86 = []
-kernel = []
-user = []
-
-default = ["x86"]

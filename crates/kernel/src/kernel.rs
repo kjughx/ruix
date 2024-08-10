@@ -1,13 +1,12 @@
 #![no_std]
 #![no_main]
 
+use core::hint::spin_loop;
+
 use kernel::{
     fs::VFS,
-    gdt::GDT,
-    idt::IDT,
-    paging::{KernelPage, Paging},
+    platform::{Platform, Process},
     println,
-    process::Process,
     tty::Terminal,
 };
 
@@ -16,16 +15,12 @@ extern "C" fn kmain() {
     Terminal::init();
     println!("Booting ruix v0.0.1");
 
-    GDT::load();
-
-    IDT::load();
-
+    Platform::init();
     VFS::resolve().expect("Resolve disks");
 
-    KernelPage::switch();
-    Paging::enable();
+    Process::exec_new("0:/SHELL").unwrap();
 
-    let process = Process::new("0:/SHELL").unwrap();
-
-    Process::exec(process);
+    loop {
+        spin_loop()
+    }
 }

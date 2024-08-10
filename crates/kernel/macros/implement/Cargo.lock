@@ -3,46 +3,7 @@
 version = 3
 
 [[package]]
-name = "global"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "implement"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "interrupts"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "kernel"
-version = "0.1.0"
-dependencies = [
- "global",
- "implement",
- "interrupts",
- "packed",
- "syscall_macro",
- "syscalls",
-]
-
-[[package]]
-name = "packed"
+name = "packed_macro"
 version = "0.1.0"
 dependencies = [
  "proc-macro2",
@@ -69,14 +30,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "std"
-version = "0.1.0"
-dependencies = [
- "syscall_macro",
- "syscalls",
-]
-
-[[package]]
 name = "syn"
 version = "1.0.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -85,22 +38,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "syscall_macro"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "syscalls"
-version = "0.1.0"
-dependencies = [
- "syscall_macro",
 ]
 
 [[package]]

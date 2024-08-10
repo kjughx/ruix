@@ -1,10 +1,14 @@
-use core::arch::asm;
+use crate::platform::Paging_;
 use core::mem::MaybeUninit;
 
-use crate::cpu::{InterruptFrame, Registers};
-use crate::paging::{pagedirectory::PageDirectory, Paging, PAGE_ACCESS_ALL, PAGE_IS_PRESENT};
-use crate::paging::{Addr, KernelPage, PAGE_IS_WRITABLE};
-use crate::process::{CurrentProcess, Process};
+use crate::platform::x86::{
+    cpu::{InterruptFrame, Registers},
+    paging::{
+        pagedirectory::PageDirectory, Addr, KernelPage, Paging, PAGE_ACCESS_ALL, PAGE_IS_PRESENT,
+        PAGE_IS_WRITABLE,
+    },
+    process::{CurrentProcess, Process},
+};
 use crate::sync::{Shared, Weak};
 
 pub mod tss;
@@ -62,13 +66,13 @@ impl Task {
             let addr = Addr(new_user_page as usize);
             let old = page_dir.get_entry(addr);
             page_dir.map(
-                addr,
-                addr,
-                PAGE_ACCESS_ALL | PAGE_IS_PRESENT | PAGE_IS_WRITABLE,
+                addr.0,
+                addr.0,
+                (PAGE_ACCESS_ALL | PAGE_IS_PRESENT | PAGE_IS_WRITABLE) as usize,
             );
             Paging::switch(&page_dir);
             unsafe { new_user_page.write(*(vaddr.0 as *const T)) };
-            page_dir.map(addr, old.addr(), old.flags());
+            page_dir.map(addr.0, old.addr().0, old.flags() as usize);
         });
         KernelPage::switch();
         let mut t: MaybeUninit<T> = MaybeUninit::uninit();
@@ -82,11 +86,6 @@ impl Task {
     pub fn copy_stack_item<T: Copy>(task: Shared<Task>, idx: usize) -> T {
         let vaddr = task.with_rlock(|task| task.registers.sp) + idx * core::mem::size_of::<usize>();
         Self::copy_from_task(task, Addr(vaddr))
-    }
-
-    #[naked]
-    unsafe extern "C" fn task_return(registers: *const Registers) {
-        asm!("nop", options(noreturn))
     }
 }
 

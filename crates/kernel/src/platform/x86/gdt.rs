@@ -1,7 +1,5 @@
-use crate::{
-    packed::{packed, Packed},
-    task::tss,
-};
+use super::process::task::tss;
+use crate::packed::{packed, Packed};
 use core::{arch::asm, ptr::addr_of};
 
 const GDT_SEGMENTS: usize = 6;

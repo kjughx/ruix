@@ -6,7 +6,7 @@ pub mod pagedirectory;
 pub mod pagetable;
 
 use global::global;
-use pagedirectory::PageDirectory;
+pub use pagedirectory::PageDirectory;
 
 global! {
     KernelPage,
@@ -24,7 +24,7 @@ impl KernelPage {
 
     pub fn map(vaddr: Addr, paddr: Addr, flags: Flags) {
         let directory = Self::get_mut();
-        directory.with_wlock(|dir| dir.map(vaddr, paddr, flags))
+        directory.with_wlock(|dir| dir.map(vaddr.0, paddr.0, flags as usize))
     }
 }
 

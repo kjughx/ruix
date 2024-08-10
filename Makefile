@@ -24,7 +24,6 @@ kdev:
 std_dev:
 	@cargo build -p std
 	@cp $(OBJ)/i686-unknown-none/debug/libstd.a build/libstd.a
-	# @strip build/libstd.a
 
 release: prelude krelease std_rel image
 

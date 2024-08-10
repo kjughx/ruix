@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 packed = { path = "macros/packed" }
+implement = { path = "macros/implement" }
 interrupts = { path = "macros/interrupts" }
 global = { path = "macros/global" }
 syscall_macro = { path = "../syscall_macro", features = ["kernel"] }
