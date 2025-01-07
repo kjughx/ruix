@@ -16,7 +16,7 @@ struct GdtEntry {
 
 const GDT_SIZE: usize = core::mem::size_of::<GdtEntry>();
 
-static TSS: tss::TSS = tss::TSS::new(0x600000, 0x10);
+static TSS: tss::Tss = tss::Tss::new(0x600000, 0x10);
 
 const GDT_SEGMENTS: usize = 6;
 global::global! {Gdts, [GdtEntry; GDT_SEGMENTS], [
@@ -91,7 +91,7 @@ impl GDT {
 
             gdts[5] = GDT::new(
                 &raw const TSS as u32,
-                core::mem::size_of::<tss::TSS>() as u32,
+                core::mem::size_of::<tss::Tss>() as u32,
                 0b10001001,
                 0b1100,
             )

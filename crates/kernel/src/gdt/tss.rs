@@ -1,7 +1,7 @@
 use crate::packed::{packed, Packed};
 
 #[packed]
-pub struct TSS {
+pub struct Tss {
     link: u32,
     esp0: u32, /* Kernel stack pointer */
     ss0: u32,  /* Kernel stack segment */
@@ -29,7 +29,7 @@ pub struct TSS {
     iopb: u32,
 }
 
-impl TSS {
+impl Tss {
     pub const fn new(esp: u32, ss: u32) -> Self {
         Self {
             link: 0,
