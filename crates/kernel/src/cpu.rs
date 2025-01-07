@@ -12,8 +12,6 @@ const USER_DATA_SEGMENT: usize = 0x23;
 const USER_CODE_SEGMENT: usize = 0x1B;
 const PROGRAM_VIRTUAL_STACK_START: usize = 0x3FF000;
 
-#[allow(dead_code)]
-
 pub type Registers = InterruptFrame;
 
 impl Registers {
@@ -92,6 +90,7 @@ impl CPU {
         unsafe { Self::_user_return(&registers) };
     }
 
+    /// # Safety
     pub unsafe fn return_to_current() {
         let task = CurrentTask::get();
         unsafe { CPU::return_to_task(task) }

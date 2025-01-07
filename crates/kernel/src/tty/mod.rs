@@ -35,7 +35,7 @@ impl TypeWriter {
     }
 
     fn make_char(c: char, color: u8) -> u16 {
-        (color as u16) << 8 | (c as u16)
+        ((color as u16) << 8) | (c as u16)
     }
 
     fn backspace(&mut self) {
