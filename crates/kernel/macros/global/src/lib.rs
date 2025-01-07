@@ -54,11 +54,11 @@ pub fn global(input: TokenStream) -> TokenStream {
         impl #name {
             #[inline]
             pub fn get() -> &'static crate::sync::global::Global<#type_> {
-                unsafe {core::ptr::addr_of!(#static_ident).as_ref().unwrap()}
+                unsafe {(&raw const #static_ident).as_ref().unwrap()}
             }
             #[inline]
             pub fn get_mut() -> &'static mut crate::sync::global::Global<#type_> {
-                unsafe {core::ptr::addr_of_mut!(#static_ident).as_mut().unwrap()}
+                unsafe {(&raw mut #static_ident).as_mut().unwrap()}
             }
         }
     };
