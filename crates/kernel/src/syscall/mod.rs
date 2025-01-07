@@ -8,7 +8,7 @@ use crate::{
     syscalls::{gen_syscalls, syscall},
     task::{CurrentTask, Task},
 };
-use core::arch::asm;
+use core::arch::naked_asm;
 
 const NUM_SYSCALLS: usize = 1;
 gen_syscalls!(1);
@@ -19,7 +19,7 @@ static mut SYSCALL_RETURN: usize = 0;
 #[interrupt_handler(0x80)]
 pub extern "C" fn entry_syscall() {
     unsafe {
-        asm!(
+        naked_asm!(
             r#"
                 cli
                 push 0
@@ -39,7 +39,6 @@ pub extern "C" fn entry_syscall() {
                 iretd
             "#,
             sym SYSCALL_RETURN,
-            options(noreturn)
         )
     };
 }

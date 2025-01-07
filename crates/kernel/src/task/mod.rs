@@ -1,4 +1,4 @@
-use core::arch::asm;
+use core::arch::naked_asm;
 use core::mem::MaybeUninit;
 
 use crate::cpu::{InterruptFrame, Registers};
@@ -86,7 +86,7 @@ impl Task {
 
     #[naked]
     unsafe extern "C" fn task_return(registers: *const Registers) {
-        asm!("nop", options(noreturn))
+        naked_asm!("nop")
     }
 }
 

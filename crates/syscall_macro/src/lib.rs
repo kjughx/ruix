@@ -74,7 +74,7 @@ fn __syscalls_kernel__(_: TokenStream, item: TokenStream) -> TokenStream {
                 #[naked]
                 #[no_mangle]
                 fn #entry() {
-                    unsafe {core::arch::asm!("ljmp {}", sym #syscall, options(noreturn))}
+                    unsafe {core::arch::naked_asm!("ljmp {}", sym #syscall)}
                 }
             })
         }
@@ -101,14 +101,13 @@ fn __syscalls_user__(_: TokenStream, item: TokenStream) -> TokenStream {
                     #[naked]
                     #[no_mangle]
                     pub unsafe extern "C" fn #ident() {
-                        unsafe {core::arch::asm!(
+                        unsafe {core::arch::naked_asm!(
                             "push ebp",
                             "mov ebp, esp",
                             #syscall_nbr,
                             "int 0x80",
                             "pop ebp",
                             "ret",
-                            options(noreturn),
                         )}
                     }
                 }
@@ -145,7 +144,7 @@ fn __syscalls_user__(_: TokenStream, item: TokenStream) -> TokenStream {
                     #[naked]
                     #[no_mangle]
                     pub unsafe extern "C" fn #ident(#args) {
-                        unsafe {core::arch::asm!(
+                        unsafe {core::arch::naked_asm!(
                             "push ebp",
                             "mov ebp, esp",
                             #(#push_ins_tokens),*,
@@ -154,7 +153,6 @@ fn __syscalls_user__(_: TokenStream, item: TokenStream) -> TokenStream {
                             "pop ebp",
                             "ret",
                             #(#push_args),*,
-                            options(noreturn),
                         )}
                     }
                 }

@@ -35,7 +35,7 @@ pub fn interrupt_table(input: TokenStream) -> TokenStream {
             #[no_mangle]
             pub extern "C" fn #fn_name() {
                 unsafe {
-                    core::arch::asm!(
+                    core::arch::naked_asm!(
                         "cli",
                         // CPU does:
                         // push ss
@@ -51,7 +51,6 @@ pub fn interrupt_table(input: TokenStream) -> TokenStream {
                         "add esp, 12", // Pop the stack, along with the error code
                         "popad", // Restore general purpose registers
                         "iretd", // Return from interrupt
-                        options(noreturn)
                     );
                 }
             }
@@ -144,7 +143,7 @@ pub fn isr(attr: TokenStream, item: TokenStream) -> TokenStream {
         #[no_mangle]
         extern "C" fn #handler () {
             unsafe {
-                core::arch::asm!(
+                core::arch::naked_asm!(
                     "cli",
                     // CPU does:
                     // push ss
@@ -160,7 +159,6 @@ pub fn isr(attr: TokenStream, item: TokenStream) -> TokenStream {
                     "popad", // Restore general purpose registers
                     "iretd", // Return from interrupt
                     sym #ident,
-                    options(noreturn)
                 );
             }
         }

@@ -1,6 +1,5 @@
 #![no_std]
 #![feature(naked_functions)]
-#![feature(asm_const)]
 extern crate syscall_macro;
 
 #[cfg(feature = "kernel")]

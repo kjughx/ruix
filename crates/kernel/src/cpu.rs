@@ -1,4 +1,4 @@
-use core::arch::asm;
+use core::arch::{naked_asm, asm};
 use core::fmt::Display;
 
 use crate::paging::Paging;
@@ -57,7 +57,7 @@ impl Registers {
     #[naked]
     #[no_mangle]
     pub unsafe extern "C" fn restore(regs: *const Registers) {
-        asm!(
+        naked_asm!(
             r#"
             push ebp
             mov ebp, esp
@@ -72,7 +72,6 @@ impl Registers {
             pop ebp
             ret
         "#,
-            options(noreturn)
         )
     }
 }

@@ -9,7 +9,7 @@ core::arch::global_asm!(include_str!("x86.S"), options(att_syntax));
 #[link_section = ".start"]
 extern "C" fn _start() -> ! {
     unsafe {
-        core::arch::asm!(
+        core::arch::naked_asm!(
             ".code32",
             "mov ax, 0x10", // Data segment is at offset 0x10
             "mov ds, ax",
@@ -22,17 +22,16 @@ extern "C" fn _start() -> ! {
             "in al, 0x92",
             "or al, 2",
             "out 0x92, al",
-            "mov al, 00010001b",
+            "mov al, 0b00010001",
             "out 0x20, al",
             "mov al, 0x20",
             "out 0x21, al",
-            "mov al, 00000001b",
+            "mov al, 0b00000001",
             "out 0x21, al",
             "call kmain",
             "42:",
             "hlt",
             "jmp 42b",
-            options(noreturn)
         );
     }
 }

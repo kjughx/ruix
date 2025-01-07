@@ -7,7 +7,6 @@
 #![feature(coerce_unsized)]
 #![feature(deref_pure_trait)]
 #![feature(unsize)]
-#![feature(asm_const)]
 #![allow(dead_code)]
 #![allow(bad_asm_style)]
 extern crate global;
