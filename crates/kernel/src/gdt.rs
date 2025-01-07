@@ -2,7 +2,7 @@ use crate::{
     packed::{packed, Packed},
     task::tss,
 };
-use core::{arch::asm, ptr::addr_of};
+use core::arch::asm;
 
 const GDT_SEGMENTS: usize = 6;
 
@@ -97,7 +97,7 @@ impl GDT {
             let mut gdts = Gdts::get_mut().wlock();
 
             gdts[5] = GDT::new(
-                addr_of!(TSS) as u32,
+                &raw const TSS as u32,
                 core::mem::size_of::<tss::TSS>() as u32,
                 0b10001001,
                 0b1100,
@@ -106,7 +106,7 @@ impl GDT {
 
             GDT_POINTER.size = (GDT_SEGMENTS * core::mem::size_of::<__GDT>() - 1) as u16;
             GDT_POINTER.base = gdts.as_ptr() as u32;
-            asm!("lgdt [{0}]", in(reg) addr_of!(GDT_POINTER));
+            asm!("lgdt [{0}]", in(reg) &raw const GDT_POINTER);
             asm!("mov ax, 0x28");
             asm!("ltr ax");
         }

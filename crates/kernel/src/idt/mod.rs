@@ -135,7 +135,7 @@ impl IDT {
         unsafe {
             asm!(r#"
             lidt [ebx]
-        "#, in("ebx") core::ptr::addr_of!(IDT_RECORD)
+        "#, in("ebx") &raw const IDT_RECORD
             )
         }
     }
