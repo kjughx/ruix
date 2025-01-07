@@ -5,6 +5,7 @@ SECTIONS
     .boot : AT(0x0) ALIGN(512) {
         KEEP(*(.boot))
     }
+    ASSERT(SIZEOF(.boot) <= 512, "Boot sector exceeds 512 bytes!")
 
     # This is loaded at 0x100000 but the binary position
     # should be 512 bytes after the boot-sector which ends at 0x1ff
