@@ -60,6 +60,14 @@ pub fn global(input: TokenStream) -> TokenStream {
             pub fn get_mut() -> &'static mut crate::sync::global::Global<#type_> {
                 unsafe {(&raw mut #static_ident).as_mut().unwrap()}
             }
+            #[inline]
+            pub fn set<S>(f: S)
+            where
+                S: FnOnce(&mut #type_),
+            {
+                #name::get_mut().with_wlock(f)
+            }
+
         }
     };
 

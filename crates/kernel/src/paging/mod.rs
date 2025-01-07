@@ -1,7 +1,5 @@
 use core::arch::asm;
 
-use crate::sync::Global;
-
 pub mod pagedirectory;
 pub mod pagetable;
 
@@ -13,7 +11,6 @@ global! {
     PageDirectory,
     PageDirectory::new(PAGE_IS_WRITABLE | PAGE_IS_PRESENT),
     "KERNEL_PAGE_DIRECTORY"
-
 }
 
 impl KernelPage {
@@ -28,8 +25,12 @@ impl KernelPage {
     }
 }
 
-static mut CURRENT_DIRECTORY: Global<PageDirectory> =
-    Global::new(|| PageDirectory::new(0), "CURRENT_DIRECTORY");
+global::global!(
+    Current,
+    PageDirectory,
+    PageDirectory::new(0),
+    "CURRENT_DIRECTORY"
+);
 
 pub struct Paging;
 impl Paging {
@@ -53,9 +54,7 @@ impl Paging {
             "#, in("eax") directory.ptr()
             )
         }
-        unsafe {
-            CURRENT_DIRECTORY.with_wlock(|this| *this = *directory);
-        }
+        Current::get_mut().with_wlock(|this| *this = *directory);
     }
 }
 

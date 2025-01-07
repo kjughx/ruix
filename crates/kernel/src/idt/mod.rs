@@ -87,8 +87,12 @@ impl IDTDescriptor {
     }
 }
 
-static mut IDT_DESCRIPTORS: [IDTDescriptor; MAX_INTERRUPTS] =
-    [IDTDescriptor::none(); MAX_INTERRUPTS];
+global::global!(
+    Idts,
+    [IDTDescriptor; MAX_INTERRUPTS],
+    [IDTDescriptor::none(); MAX_INTERRUPTS],
+    "IDTS"
+);
 
 static mut IDT_RECORD: IDTRecord = IDTRecord { limit: 0, base: 0 };
 
@@ -118,10 +122,13 @@ impl IDT {
             Self::set(entry.id as usize, entry.ptr)
         }
 
+        // Lock it now, so no one can touch it
+        let idts = unsafe { Idts::get_mut().wlock() };
+
         unsafe {
             IDT_RECORD = IDTRecord::new(
                 MAX_INTERRUPTS * core::mem::size_of::<IDTDescriptor>(),
-                IDT_DESCRIPTORS.as_ptr(),
+                idts.as_ptr(),
             );
         }
 
@@ -137,6 +144,6 @@ impl IDT {
         if i >= MAX_INTERRUPTS {
             return;
         }
-        unsafe { IDT_DESCRIPTORS[i] = IDTDescriptor::new(cb) };
+        Idts::set(|idts| idts[i] = IDTDescriptor::new(cb));
     }
 }

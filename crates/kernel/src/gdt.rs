@@ -26,14 +26,14 @@ impl From<&[u8; GDT_SIZE]> for __GDT {
 
 static TSS: tss::TSS = tss::TSS::new(0x600000, 0x10);
 
-static mut GDTS: [__GDT; GDT_SEGMENTS] = [
+global::global! {Gdts, [__GDT; GDT_SEGMENTS], [
     GDT::new(0x00, 0x00, 0x00, 0x00).encode(),
     GDT::new(0x00, 0xFFFFFF, 0b10011011, 0b1100).encode(), // Kernel Code Segment
     GDT::new(0x00, 0xFFFFFF, 0b10010011, 0b1100).encode(), // Kernel Data Segment
     GDT::new(0x00, 0xFFFFFF, 0b11111011, 0b1100).encode(), // User Code Segment,
     GDT::new(0x00, 0xFFFFFF, 0b11110011, 0b1100).encode(), // User Data Segment,
     GDT::new(0x00, 0x000000, 0b00000000, 0b0000).encode(), // Task State Segment, (Un-initialized)
-];
+], "GDTS"}
 
 // @base: base address of segment
 // @limit: size of segment (NOTE: only 20 bits of 32)
@@ -93,15 +93,19 @@ impl GDT {
 
     pub fn load() {
         unsafe {
-            GDTS[5] = GDT::new(
+            // Lock it now, so that no-one can touch it
+            let mut gdts = Gdts::get_mut().wlock();
+
+            gdts[5] = GDT::new(
                 addr_of!(TSS) as u32,
                 core::mem::size_of::<tss::TSS>() as u32,
                 0b10001001,
                 0b1100,
             )
             .encode();
+
             GDT_POINTER.size = (GDT_SEGMENTS * core::mem::size_of::<__GDT>() - 1) as u16;
-            GDT_POINTER.base = GDTS.as_ptr() as u32;
+            GDT_POINTER.base = gdts.as_ptr() as u32;
             asm!("lgdt [{0}]", in(reg) addr_of!(GDT_POINTER));
             asm!("mov ax, 0x28");
             asm!("ltr ax");

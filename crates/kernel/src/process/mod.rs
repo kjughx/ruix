@@ -10,7 +10,7 @@ use crate::loader::elf::Elf;
 use crate::paging::{Addr, PAGE_SIZE};
 use crate::paging::{PAGE_ACCESS_ALL, PAGE_IS_PRESENT, PAGE_IS_WRITABLE};
 use crate::path::Path;
-use crate::sync::{Global, Shared, Weak};
+use crate::sync::{Shared, Weak};
 use crate::task::Task;
 
 const USER_STACK_SIZE: usize = 16 * 1024;
@@ -19,16 +19,12 @@ const USER_STACK_END: usize = USER_STACK_START - USER_STACK_SIZE;
 const USER_VIRTUAL_START: usize = 0x400000;
 const MAX_PROCESSES: usize = 12;
 
-static mut PROCESSES: Global<[Option<Shared<Process>>; MAX_PROCESSES]> = Global::new(
-    || {
-        let mut processes: [Option<Shared<Process>>; MAX_PROCESSES] =
-            [const { None }; MAX_PROCESSES];
-        processes[0] = Some(Process::idle());
-        processes
-    },
-    "PROCESSES",
+global!(
+    ProcessList,
+    [Option<Shared<Process>>; MAX_PROCESSES],
+    [const { None }; MAX_PROCESSES],
+    "PROCESSES"
 );
-
 global!(Current, usize, 0, "CURRENT_PROCESS");
 
 impl Current {
@@ -40,8 +36,8 @@ impl Current {
 pub struct CurrentProcess;
 impl CurrentProcess {
     pub fn get() -> Shared<Process> {
-        Current::get().with_rlock(|id| unsafe {
-            PROCESSES.with_rlock(|processes| {
+        Current::get().with_rlock(|id| {
+            ProcessList::get().with_rlock(|processes| {
                 if let Some(ref proc) = processes[*id] {
                     proc.clone()
                 } else {
@@ -71,20 +67,18 @@ impl Processes {
             return None;
         }
 
-        unsafe {
-            PROCESSES.with_rlock(|array| -> Option<Shared<Process>> {
-                // Clippy doesn't understand what's going on
-                #[allow(clippy::useless_asref)]
-                array[id].as_ref().map(|process| process.clone())
-            })
-        }
+        ProcessList::get().with_rlock(|array| -> Option<Shared<Process>> {
+            // Clippy doesn't understand what's going on
+            #[allow(clippy::useless_asref)]
+            array[id].as_ref().map(|process| process.clone())
+        })
     }
 
     /// # Safety: Unsafe because it trusts the PROCESSES is locked
     unsafe fn find_slot() -> Option<usize> {
         for i in 0..MAX_PROCESSES {
             unsafe {
-                if PROCESSES.force()[i].is_none() {
+                if ProcessList::get_mut().force()[i].is_none() {
                     return Some(i);
                 }
             }
@@ -94,7 +88,7 @@ impl Processes {
 
     fn insert(mut process: Shared<Process>) -> Option<usize> {
         unsafe {
-            PROCESSES.with_wlock(|list| -> Option<usize> {
+            ProcessList::get_mut().with_wlock(|list| -> Option<usize> {
                 let id = Self::find_slot()?;
 
                 process.with_wlock(|process| process.id = id);
