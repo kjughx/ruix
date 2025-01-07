@@ -1,13 +1,11 @@
-use crate::{
-    packed::{packed, Packed},
-    task::tss,
-};
 use core::arch::asm;
 
-const GDT_SEGMENTS: usize = 6;
+use crate::packed::{packed, Packed};
+
+mod tss;
 
 #[packed]
-struct __GDT {
+struct GdtEntry {
     limit_low: u16,
     base_low: u16,
     base_middle: u8,
@@ -16,17 +14,12 @@ struct __GDT {
     base_high: u8,
 }
 
-const GDT_SIZE: usize = core::mem::size_of::<__GDT>();
-
-impl From<&[u8; GDT_SIZE]> for __GDT {
-    fn from(bytes: &[u8; GDT_SIZE]) -> Self {
-        unsafe { *(bytes.as_ptr() as *const __GDT) }
-    }
-}
+const GDT_SIZE: usize = core::mem::size_of::<GdtEntry>();
 
 static TSS: tss::TSS = tss::TSS::new(0x600000, 0x10);
 
-global::global! {Gdts, [__GDT; GDT_SEGMENTS], [
+const GDT_SEGMENTS: usize = 6;
+global::global! {Gdts, [GdtEntry; GDT_SEGMENTS], [
     GDT::new(0x00, 0x00, 0x00, 0x00).encode(),
     GDT::new(0x00, 0xFFFFFF, 0b10011011, 0b1100).encode(), // Kernel Code Segment
     GDT::new(0x00, 0xFFFFFF, 0b10010011, 0b1100).encode(), // Kernel Data Segment
@@ -104,7 +97,7 @@ impl GDT {
             )
             .encode();
 
-            GDT_POINTER.size = (GDT_SEGMENTS * core::mem::size_of::<__GDT>() - 1) as u16;
+            GDT_POINTER.size = (GDT_SEGMENTS * core::mem::size_of::<GdtEntry>() - 1) as u16;
             GDT_POINTER.base = gdts.as_ptr() as u32;
             asm!("lgdt [{0}]", in(reg) &raw const GDT_POINTER);
             asm!("mov ax, 0x28");
@@ -112,7 +105,7 @@ impl GDT {
         }
     }
 
-    const fn encode(&self) -> __GDT {
+    const fn encode(&self) -> GdtEntry {
         let limit_low = (self.limit & 0xFFFF) as u16;
         let base_low = (self.base & 0xFFFF) as u16;
         let base_middle = ((self.base >> 16) & 0xFF) as u8;
@@ -120,7 +113,7 @@ impl GDT {
         let limit_flags = ((self.flags & 0x0f) << 4) | (((self.limit >> 16) & 0x0f) as u8);
         let base_high = ((self.base >> 24) & 0xFF) as u8;
 
-        __GDT {
+        GdtEntry {
             limit_low,
             base_low,
             base_middle,

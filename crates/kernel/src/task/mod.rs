@@ -7,8 +7,6 @@ use crate::paging::{Addr, KernelPage, PAGE_IS_WRITABLE};
 use crate::process::{CurrentProcess, Process};
 use crate::sync::{Shared, Weak};
 
-pub mod tss;
-
 // TODO: Implement a task-list
 
 pub struct CurrentTask;
