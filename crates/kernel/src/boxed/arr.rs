@@ -127,3 +127,19 @@ impl<T: Copy> FromIterator<T> for Array<T> {
         arr
     }
 }
+
+impl<T: core::fmt::Debug> core::fmt::Debug for Array<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        writeln!(f, "[")?;
+        for (i, el) in self.into_iter().enumerate() {
+            write!(f, "\t{:#?}", el)?;
+
+            if i != self.len() as usize {
+                writeln!(f, ",")?;
+            }
+        }
+        writeln!(f, "]")?;
+
+        Ok(())
+    }
+}
