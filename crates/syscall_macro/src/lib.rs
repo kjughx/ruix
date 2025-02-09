@@ -89,79 +89,42 @@ fn __syscalls_user__(_: TokenStream, item: TokenStream) -> TokenStream {
     for (i, item) in items.items.iter_mut().enumerate() {
         if let ForeignItem::Fn(ForeignItemFn { ref mut sig, .. }) = item {
             let arg_count = sig.inputs.len();
+            let args = &sig.inputs;
             let ident = &sig.ident;
-            let array_name = Ident::new(
-                &format!("ARG_SIZES_syscall_{}", i),
-                proc_macro2::Span::call_site(),
-            );
-
-            let exp = if arg_count == 0 {
-                let syscall_nbr = format!("mov eax, {}", i);
-                quote! {
-                    #[naked]
-                    #[no_mangle]
-                    pub unsafe extern "C" fn #ident() {
-                        unsafe {core::arch::naked_asm!(
-                            "push ebp",
-                            "mov ebp, esp",
-                            #syscall_nbr,
-                            "int 0x80",
-                            "pop ebp",
-                            "ret",
-                        )}
-                    }
-                }
+            let body = if arg_count == 0 {
+                format!(
+                    r#"
+                        push ebp;
+                        mov eax, {i};
+                        int 0x80;
+                        pop ebp;
+                        ret;
+                "#
+                )
             } else {
-                let mut arg_sizes = Vec::new();
-
-                let args = &sig.inputs;
-                for arg in args {
-                    if let syn::FnArg::Typed(PatType { ty, .. }) = arg {
-                        arg_sizes.push(quote! {core::mem::size_of::<#ty>()});
-                    }
-                }
-
-                let push_ins: Vec<&str> = arg_sizes
-                    .iter()
-                    .map(|_| r#"mov ebx, [ebp + 8 + {}]; push ebx;"#)
-                    .collect();
-
-                let push_args: Vec<_> = arg_sizes
-                    .iter()
-                    .enumerate()
-                    .map(|(i, _)| quote! { const #array_name[#i]})
-                    .collect();
-
-                let push_ins_tokens = push_ins
-                    .iter()
-                    .map(|ins| quote! { #ins })
-                    .collect::<Vec<_>>();
-
-                let syscall_nbr = format!("mov eax, {}", i);
-                quote! {
-                    const #array_name: [usize; #arg_count] = [ #(#arg_sizes),* ];
-
-                    #[naked]
-                    #[no_mangle]
-                    pub unsafe extern "C" fn #ident(#args) {
-                        unsafe {core::arch::naked_asm!(
-                            "push ebp",
-                            "mov ebp, esp",
-                            #(#push_ins_tokens),*,
-                            #syscall_nbr,
-                            "int 0x80",
-                            "pop ebp",
-                            "ret",
-                            #(#push_args),*,
-                        )}
-                    }
-                }
+                format!(
+                    r#"
+                        push ebp;
+                        mov eax, {i};
+                        add esp, {0};
+                        int 0x80;
+                        sub esp, {0};
+                        pop ebp;
+                        ret;
+                            "#,
+                    4 * arg_count
+                )
             };
 
-            expanded.extend(exp);
+            expanded.extend(quote! {
+                #[naked]
+                #[no_mangle]
+                pub unsafe extern "C" fn #ident(#args) {
+                    unsafe {core::arch::naked_asm!( #body)}
+                }
+            });
         }
     }
-
     TokenStream::from(expanded)
 }
 
