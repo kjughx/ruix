@@ -34,6 +34,7 @@ pub extern "C" fn entry_syscall() {
                 add esp, 8
 
                 popad
+                add esp, 4
 
                 mov eax, [{0}]
                 iretd
