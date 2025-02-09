@@ -53,33 +53,36 @@ impl Task {
         task.with_wlock(|task| task.registers.save(frame));
     }
 
-    pub fn copy_from_task<T: Copy>(task: Shared<Task>, vaddr: Addr) -> T {
-        let new_user_page: *mut T = alloc!(core::mem::size_of::<T>());
+    pub fn copy_from_task<T: Copy>(task: &Shared<Task>, vaddr: Addr) -> T {
+        let tmp: *mut T = alloc!(core::mem::size_of::<T>());
+        let tmp_addr = Addr(tmp as usize);
+
         task.with_rlock(|task| {
-            let mut page_dir = task.page_directory;
-            let addr = Addr(new_user_page as usize);
-            let old = page_dir.get_entry(addr);
-            page_dir.map(
-                addr,
-                addr,
+            let mut pages = task.page_directory;
+            let old = pages.get_entry(tmp_addr);
+            pages.map(
+                tmp_addr,
+                tmp_addr,
                 PAGE_ACCESS_ALL | PAGE_IS_PRESENT | PAGE_IS_WRITABLE,
             );
-            Paging::switch(&page_dir);
-            unsafe { new_user_page.write(*(vaddr.0 as *const T)) };
-            page_dir.map(addr, old.addr(), old.flags());
+            Paging::switch(&task.page_directory);
+            unsafe { tmp.write(*(vaddr.0 as *const T)) };
+
+            pages.map(tmp_addr, old.addr(), old.flags());
         });
+
         KernelPage::switch();
-        let mut t: MaybeUninit<T> = MaybeUninit::uninit();
+        let mut t = MaybeUninit::uninit();
         unsafe {
-            core::ptr::copy_nonoverlapping(new_user_page as *const T, t.as_mut_ptr(), 1);
-            free!(new_user_page);
-            t.assume_init()
+            t.write(tmp);
+            free!(tmp);
+            *t.assume_init()
         }
     }
 
-    pub fn copy_stack_item<T: Copy>(task: Shared<Task>, idx: usize) -> T {
+    pub fn copy_stack_item<T: Copy>(task: &Shared<Task>, idx: usize) -> T {
         let vaddr = task.with_rlock(|task| task.registers.sp) + idx * core::mem::size_of::<usize>();
-        Self::copy_from_task(task, Addr(vaddr))
+        Self::copy_from_task(&task, Addr(vaddr))
     }
 
     #[naked]
