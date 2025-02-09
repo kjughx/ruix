@@ -100,8 +100,8 @@ impl PageDirectory {
     }
 
     pub fn map(&mut self, vaddr: Addr, paddr: Addr, flags: Flags) {
-        assert!(vaddr.is_aligned(), "Invalid virtual address");
-        assert!(paddr.is_aligned(), "Invalid physical address");
+        assert!(vaddr.is_aligned(), "Invalid virtual address: {vaddr}");
+        assert!(paddr.is_aligned(), "Invalid physical address: {paddr}");
 
         self.set(vaddr, PageTableEntry::new(paddr, flags));
     }
