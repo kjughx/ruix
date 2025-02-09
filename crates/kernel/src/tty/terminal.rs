@@ -2,7 +2,7 @@ use global::global;
 
 use core::fmt::{self, Write};
 
-use super::TypeWriter;
+use super::{TypeWriter, COLOR_WHITE};
 
 const VGA_WIDTH: usize = 80;
 const VGA_HEIGHT: usize = 25;
@@ -22,6 +22,12 @@ impl Terminal {
     pub fn print(args: fmt::Arguments) {
         let terminal = Self::get_mut();
         terminal.with_wlock(|terminal| terminal.write_fmt(args).unwrap());
+    }
+    pub fn write(chars: &[u8]) {
+        let terminal = Self::get_mut();
+        terminal.with_wlock(|terminal| for c in chars {
+            terminal.write_char((*c) as char, COLOR_WHITE);
+        })
     }
 }
 
