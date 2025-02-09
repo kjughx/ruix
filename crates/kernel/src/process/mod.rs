@@ -275,7 +275,7 @@ impl Process {
 
     /// This marks the process as dead.
     /// Touching it after this is undefined behaviour.
-    pub fn mark_dead(mut this: Shared<Process>, _: i32) {
+    pub fn mark_dead(mut this: Shared<Process>, _: usize) {
         this.with_wlock(|process| process._mark_dead = true);
 
         // TODO: How do we clean up the memory of the process?
