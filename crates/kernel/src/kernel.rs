@@ -26,6 +26,7 @@ extern "C" fn kmain() {
     Paging::enable();
 
     let process = Process::new("0:/SHELL").unwrap();
-
     Process::exec(process);
+
+    unsafe { core::arch::asm!("hlt") };
 }
