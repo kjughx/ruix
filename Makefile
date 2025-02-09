@@ -3,10 +3,10 @@ BIN=bin
 OBJ=build
 
 BINS=$(BIN)/kernel.bin
+OBJS=build/kernelfull.o
+LIBS=build/libstd.a
 
-all: dev
-
-image:
+iso: $(BINS) shell
 	@rm -f $(BIN)/os.bin
 	@dd status=none if=$(BIN)/kernel.bin >> $(BIN)/os.bin
 	@dd status=none if=/dev/zero bs=1024 count=1024 >> $(BIN)/os.bin
@@ -14,28 +14,33 @@ image:
 	@sudo cp shell/shell /mnt/d/SHELL
 	@sudo umount /mnt/d
 
-dev: prelude kdev std_dev image
-
-kdev:
+$(OBJS) $(LIBS) $(BINS): prelude
 	@cargo build -p kernel
 	@cp $(OBJ)/i686-unknown-none/debug/kernel build/kernelfull.o
 	@objcopy --target elf32-i386 -O binary build/kernelfull.o $(BIN)/kernel.bin
 
-std_dev:
 	@cargo build -p std
 	@cp $(OBJ)/i686-unknown-none/debug/libstd.a build/libstd.a
-	# @strip build/libstd.a
 
-release: prelude krelease std_rel image
+shell: $(LIBS)
+	make -C shell clean
+	make -C shell
 
-krelease:
+
+.PHONY: release
+release:
 	@cargo build --release -p kernel
 	@cp $(OBJ)/i686-unknown-none/release/kernel build/kernelfull.o
 	@objcopy --target elf32-i386 -O binary build/kernelfull.o $(BIN)/kernel.bin
 
-std_rel:
 	@cargo build --release -p std
 	@cp $(OBJ)/i686-unknown-none/release/libstd.a build/libstd.a
+
+
+.PHONY: clippy
+clippy:
+	@cargo clippy -p kernel
+	@cargo clippy -p std
 
 .PHONY: prelude
 prelude:
@@ -47,7 +52,7 @@ clean:
 	@rm -rf $(OBJ)/* $(BIN)/*
 
 .PHONY: gdb
-gdb: dev
+gdb: iso
 	rust-gdb \
 		-ex "set confirm off" \
 		-ex "set output-radix 16" \
@@ -56,14 +61,14 @@ gdb: dev
 		-ex="break kmain"
 
 .PHONY: qemu
-qemu: dev
+qemu: iso
 	qemu-system-i386 -hda bin/os.bin -serial stdio
 	# qemu-system-i386 -hda bin/os.bin -monitor stdio
 
 .PHONY: trace
-trace: dev
+trace: iso
 	qemu-system-i386 -hda bin/os.bin -serial stdio -display none
 
 .PHONY: gdb
-debug: dev
+debug: iso
 	sh scripts/debug.sh
