@@ -67,10 +67,13 @@ pub unsafe fn syscall_handler(command: usize, frame: *const InterruptFrame) -> u
 }
 
 #[syscall(0)]
-fn exit(code: i32) -> usize {
+fn exit(_: *const InterruptFrame) -> usize {
+    let task = CurrentTask::get();
+    let code = Task::copy_stack_item::<usize>(&task, 0);
     Process::mark_dead(CurrentProcess::get(), code);
 
     unsafe { CPU::return_to_current() };
+
 
     unreachable!()
 }
