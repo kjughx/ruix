@@ -25,13 +25,20 @@ const MAX_INTERRUPTS: usize = 255;
 interrupts::interrupt_table!(255);
 
 #[no_mangle]
-fn interrupt_handler(i: u16, frame: *const InterruptFrame) {
+fn interrupt_handler(i: u16, frame: *const InterruptFrame, code: u16) {
     unsafe {
-        traceln!("Interrupted: {}: {}", i, *frame);
+        traceln!("Interrupted: {} ({:b}): {}", i, code, *frame);
     };
 
     if i == 13 {
-        panic!("UNHANDLED PAGE FAULT");
+        let addr = unsafe {
+            let p: usize;
+            asm!(
+            "mov eax, cr2"
+            , out("eax") p);
+            p
+        };
+        panic!("UNHANDLED PAGE FAULT AT {}", addr);
     }
 
     outb(0x20, 0x20);
