@@ -1,9 +1,10 @@
+use crate::boxed::Array;
 use core::arch::naked_asm;
 use core::mem::MaybeUninit;
 
 use crate::cpu::{InterruptFrame, Registers};
 use crate::paging::{pagedirectory::PageDirectory, Paging, PAGE_ACCESS_ALL, PAGE_IS_PRESENT};
-use crate::paging::{Addr, KernelPage, PAGE_IS_WRITABLE};
+use crate::paging::{Addr, KernelPage, PAGE_IS_WRITABLE, PAGE_SIZE};
 use crate::process::{CurrentProcess, Process};
 use crate::sync::{Shared, Weak};
 
@@ -78,6 +79,43 @@ impl Task {
             free!(tmp);
             *t.assume_init()
         }
+    }
+
+    pub fn copy_slice_from_task<T: Copy>(task: Shared<Task>, start: Addr, n: usize) -> Array<T> {
+        // FIXME: tmp cannot span more than a page
+        if n * n * core::mem::size_of::<T>() > PAGE_SIZE {
+            unimplemented!("Copies over page boundaries");
+        }
+
+        let tmp: *mut T = alloc!(n * core::mem::size_of::<T>());
+        let tmp_addr = Addr(tmp as usize);
+
+        task.with_rlock(|task| {
+            let mut pages = task.page_directory;
+            let old = pages.get_entry(start);
+
+            pages.map(
+                tmp_addr,
+                tmp_addr,
+                PAGE_ACCESS_ALL | PAGE_IS_PRESENT | PAGE_IS_WRITABLE,
+            );
+
+            Paging::switch(&task.page_directory);
+            for i in 0..n {
+                unsafe { tmp.add(i).write(*((start.0 as *const T).add(i))) }
+            }
+            pages.map(tmp_addr, old.addr(), old.flags());
+        });
+
+        KernelPage::switch();
+        let mut t = Array::new(n);
+        unsafe {
+            for i in 0..n {
+                t[i] = *tmp.offset(i as isize);
+            }
+        }
+        free!(tmp);
+        t
     }
 
     pub fn copy_stack_item<T: Copy>(task: &Shared<Task>, idx: usize) -> T {
